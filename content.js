@@ -85,7 +85,15 @@ function getCorrection(word) {
  */
 function correctInputElement(element) {
   const value = element.value;
-  const cursorPos = element.selectionStart;
+  // selectionStart throws a TypeError on input types that don't support text
+  // selection (e.g. type="email"). This is a defensive fallback in case such an
+  // element somehow bypasses the SELECTOR filter.
+  let cursorPos;
+  try {
+    cursorPos = element.selectionStart;
+  } catch {
+    return;
+  }
   if (cursorPos === null || cursorPos === undefined) return;
 
   const charBefore = value[cursorPos - 1];
@@ -110,8 +118,9 @@ function correctInputElement(element) {
     const newCursorPos = wordStart + correction.length + 1; // +1 for the separator
     element.setSelectionRange(newCursorPos, newCursorPos);
 
-    // Notify JS frameworks (React, Vue, etc.) that the value changed
-    element.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: false }));
+    // Notify JS frameworks (React, Vue, etc.) that the value changed.
+    // `composed: true` is required so the event crosses Shadow DOM boundaries.
+    element.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, cancelable: false }));
   } finally {
     applying = false;
   }
@@ -210,7 +219,7 @@ function autoCapitalizeInput(element, event) {
   try {
     element.value = value.substring(0, cursorPos - 1) + upper + value.substring(cursorPos);
     element.setSelectionRange(cursorPos, cursorPos);
-    element.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: false }));
+    element.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, cancelable: false }));
   } finally {
     applying = false;
   }
@@ -296,25 +305,17 @@ const SELECTOR = [
     ':not([type="button"]):not([type="reset"]):not([type="image"])' +
     ':not([type="color"]):not([type="range"]):not([type="number"])' +
     ':not([type="date"]):not([type="time"]):not([type="datetime-local"])' +
-    ':not([type="month"]):not([type="week"])',
+    ':not([type="month"]):not([type="week"]):not([type="email"])',
   'textarea',
-  '[contenteditable]',
+  '[contenteditable]:not([contenteditable="false" i])',
 ].join(', ');
 
 function attachToElement(el) {
   if (!el || el._correctorAttached) return;
-
-  const tag = el.tagName;
-  if (!tag) return;
-
-  const isInput = tag === 'INPUT' || tag === 'TEXTAREA';
-  const isContentEditable =
-    el.getAttribute && el.getAttribute('contenteditable') !== null;
-
-  if (isInput || isContentEditable) {
-    el.addEventListener('input', handleInput);
-    el._correctorAttached = true;
-  }
+  if (typeof el.matches !== 'function') return;
+  if (!el.matches(SELECTOR)) return;
+  el.addEventListener('input', handleInput);
+  el._correctorAttached = true;
 }
 
 function attachToAll(root) {
