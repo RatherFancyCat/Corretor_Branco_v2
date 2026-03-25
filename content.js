@@ -2,6 +2,8 @@
 
 let wordMap = {};
 let enabled = true;
+let settings = { autoCapitalize: false, blacklistedDomains: [] };
+let blockedByDomain = false;
 
 // Flag to prevent re-entrant corrections when we programmatically set element.value
 let applying = false;
@@ -9,14 +11,27 @@ let applying = false;
 // Characters that mark the end of a word
 const SEPARATOR_RE = /[\s.,!?;:'"()\[\]{}\-\/\\]/;
 
+// Sentence-ending characters (for auto-capitalise)
+const SENTENCE_END_RE = /[.!?]/;
+
 // ---------------------------------------------------------------------------
 // Storage
 // ---------------------------------------------------------------------------
 
+function checkDomainBlock() {
+  const hostname = window.location.hostname;
+  const domains = (settings && settings.blacklistedDomains) || [];
+  blockedByDomain = domains.some(
+    (d) => d && (hostname === d || hostname.endsWith('.' + d))
+  );
+}
+
 function loadSettings() {
-  chrome.storage.local.get(['wordMap', 'enabled'], (data) => {
+  chrome.storage.local.get(['wordMap', 'enabled', 'settings'], (data) => {
     wordMap = data.wordMap || {};
     enabled = data.enabled !== false;
+    settings = data.settings || { autoCapitalize: false, blacklistedDomains: [] };
+    checkDomainBlock();
   });
 }
 
@@ -24,6 +39,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
   if (changes.wordMap) wordMap = changes.wordMap.newValue || {};
   if (changes.enabled !== undefined) enabled = changes.enabled.newValue !== false;
+  if (changes.settings) {
+    settings = changes.settings.newValue || { autoCapitalize: false, blacklistedDomains: [] };
+    checkDomainBlock();
+  }
 });
 
 loadSettings();
@@ -145,13 +164,102 @@ function correctContentEditable(element) {
 }
 
 // ---------------------------------------------------------------------------
+// Auto-capitalise logic
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true if textBefore represents a position at the start of a sentence:
+ * - beginning of the field (empty or only whitespace)
+ * - after a newline (possibly preceded by spaces/tabs)
+ * - after a sentence-ending character (. ! ?) possibly followed by spaces/tabs
+ */
+function isAtSentenceStart(textBefore) {
+  if (textBefore.length === 0) return true;
+
+  // Scan backwards past spaces and tabs (newline is itself a trigger, not skipped)
+  let i = textBefore.length - 1;
+  while (i >= 0 && (textBefore[i] === ' ' || textBefore[i] === '\t')) {
+    i--;
+  }
+
+  if (i < 0) return true; // nothing but whitespace before
+  const ch = textBefore[i];
+  return ch === '\n' || SENTENCE_END_RE.test(ch);
+}
+
+/**
+ * Capitalise the just-typed letter if it follows a sentence-ending context.
+ * Only fires when a single lowercase letter was inserted (event.inputType === 'insertText').
+ */
+function autoCapitalizeInput(element, event) {
+  if (!event || event.inputType !== 'insertText') return;
+  const typedChar = event.data;
+  if (!typedChar || typedChar.length !== 1) return;
+  // Only act when the character has an uppercase form and is currently lowercase
+  if (typedChar === typedChar.toUpperCase()) return;
+
+  const value = element.value;
+  const cursorPos = element.selectionStart;
+  if (cursorPos === null || cursorPos < 1) return;
+
+  const textBefore = value.substring(0, cursorPos - 1);
+  if (!isAtSentenceStart(textBefore)) return;
+
+  const upper = typedChar.toUpperCase();
+  applying = true;
+  try {
+    element.value = value.substring(0, cursorPos - 1) + upper + value.substring(cursorPos);
+    element.setSelectionRange(cursorPos, cursorPos);
+    element.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: false }));
+  } finally {
+    applying = false;
+  }
+}
+
+/**
+ * Capitalise the just-typed letter in a contenteditable element.
+ */
+function autoCapitalizeContentEditable(element, event) {
+  if (!event || event.inputType !== 'insertText') return;
+  const typedChar = event.data;
+  if (!typedChar || typedChar.length !== 1) return;
+  if (typedChar === typedChar.toUpperCase()) return;
+
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return;
+  const range = selection.getRangeAt(0);
+  if (!range.collapsed) return;
+  const node = range.startContainer;
+  if (!node || node.nodeType !== Node.TEXT_NODE) return;
+  if (!element.contains(node)) return;
+
+  const cursorPos = range.startOffset;
+  if (cursorPos < 1) return;
+  const text = node.textContent;
+  const textBefore = text.substring(0, cursorPos - 1);
+  if (!isAtSentenceStart(textBefore)) return;
+
+  const upper = typedChar.toUpperCase();
+  applying = true;
+  try {
+    node.textContent = text.substring(0, cursorPos - 1) + upper + text.substring(cursorPos);
+    const newRange = document.createRange();
+    newRange.setStart(node, cursorPos);
+    newRange.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+  } finally {
+    applying = false;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Event handling
 // ---------------------------------------------------------------------------
 
 function handleInput(event) {
   if (applying) return;
-  if (!enabled) return;
-  if (Object.keys(wordMap).length === 0) return;
+  if (!enabled || blockedByDomain) return;
 
   const el = event.target;
   const tag = el.tagName;
@@ -159,10 +267,22 @@ function handleInput(event) {
   const isTextInput =
     (tag === 'INPUT' || tag === 'TEXTAREA') && el.type !== 'password';
 
-  if (isTextInput) {
-    correctInputElement(el);
-  } else if (el.isContentEditable) {
-    correctContentEditable(el);
+  // Word correction (triggers on separator character)
+  if (Object.keys(wordMap).length > 0) {
+    if (isTextInput) {
+      correctInputElement(el);
+    } else if (el.isContentEditable) {
+      correctContentEditable(el);
+    }
+  }
+
+  // Auto-capitalise (triggers on alphabetic letter at sentence start)
+  if (settings.autoCapitalize) {
+    if (isTextInput) {
+      autoCapitalizeInput(el, event);
+    } else if (el.isContentEditable) {
+      autoCapitalizeContentEditable(el, event);
+    }
   }
 }
 
@@ -227,3 +347,5 @@ if (document.body) {
     observer.observe(document.body, { childList: true, subtree: true });
   });
 }
+
+

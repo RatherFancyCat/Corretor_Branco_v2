@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Corretor Branco",
   "version": "1.0.0",
-  "description": "Automatically corrects spelling mistakes in real time based on a custom word list.",
+  "description": "Corrige erros ortográficos em tempo real com base numa lista de palavras personalizada.",
   "permissions": ["storage", "tabs"],
   "host_permissions": ["<all_urls>"],
   "background": {

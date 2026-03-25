@@ -1,25 +1,32 @@
 'use strict';
 
 let wordMap = {};
+let settings = { autoCapitalize: false, blacklistedDomains: [] };
 let applying = false;
 
 const SEPARATOR_RE = /[\s.,!?;:'"()\[\]{}\-\/\\]/;
+const SENTENCE_END_RE = /[.!?]/;
 
 // ---------------------------------------------------------------------------
 // Storage
 // ---------------------------------------------------------------------------
 
-function loadWordMap(callback) {
-  chrome.storage.local.get('wordMap', (data) => {
+function loadAll(callback) {
+  chrome.storage.local.get(['wordMap', 'settings'], (data) => {
     wordMap = data.wordMap || {};
+    settings = data.settings || { autoCapitalize: false, blacklistedDomains: [] };
     if (callback) callback();
   });
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes.wordMap) {
+  if (area !== 'local') return;
+  if (changes.wordMap) {
     wordMap = changes.wordMap.newValue || {};
     renderWordList();
+  }
+  if (changes.settings) {
+    settings = changes.settings.newValue || { autoCapitalize: false, blacklistedDomains: [] };
   }
 });
 
@@ -75,6 +82,44 @@ function correctTextarea(element) {
 }
 
 // ---------------------------------------------------------------------------
+// Auto-capitalise helpers (mirror of content.js logic)
+// ---------------------------------------------------------------------------
+
+function isAtSentenceStart(textBefore) {
+  if (textBefore.length === 0) return true;
+  let i = textBefore.length - 1;
+  while (i >= 0 && (textBefore[i] === ' ' || textBefore[i] === '\t')) {
+    i--;
+  }
+  if (i < 0) return true;
+  const ch = textBefore[i];
+  return ch === '\n' || SENTENCE_END_RE.test(ch);
+}
+
+function autoCapitalizeTextarea(element, event) {
+  if (!event || event.inputType !== 'insertText') return;
+  const typedChar = event.data;
+  if (!typedChar || typedChar.length !== 1) return;
+  if (typedChar === typedChar.toUpperCase()) return;
+
+  const value = element.value;
+  const cursorPos = element.selectionStart;
+  if (cursorPos === null || cursorPos < 1) return;
+
+  const textBefore = value.substring(0, cursorPos - 1);
+  if (!isAtSentenceStart(textBefore)) return;
+
+  const upper = typedChar.toUpperCase();
+  applying = true;
+  try {
+    element.value = value.substring(0, cursorPos - 1) + upper + value.substring(cursorPos);
+    element.setSelectionRange(cursorPos, cursorPos);
+  } finally {
+    applying = false;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Correction log
 // ---------------------------------------------------------------------------
 
@@ -92,7 +137,7 @@ function logCorrection(original, corrected) {
   if (placeholder) placeholder.remove();
 
   const li = document.createElement('li');
-  const time = new Date().toLocaleTimeString();
+  const time = new Date().toLocaleTimeString('pt-PT');
   li.innerHTML =
     `<span class="log-time">${time}</span>` +
     ` <span class="log-original">${escapeHtml(original)}</span>` +
@@ -119,8 +164,8 @@ function renderWordList() {
 
   if (entries.length === 0) {
     container.innerHTML =
-      '<p class="no-words">No word pairs loaded. ' +
-      '<a href="#" id="goToOptions">Add words in the options page.</a></p>';
+      '<p class="no-words">Nenhum par de palavras carregado. ' +
+      '<a href="#" id="goToOptions">Adicione palavras na página de opções.</a></p>';
     attachGoToOptions();
     return;
   }
@@ -137,7 +182,7 @@ function renderWordList() {
 
   container.innerHTML =
     '<table class="word-table">' +
-    '<thead><tr><th>Incorrect</th><th></th><th>Correct</th></tr></thead>' +
+    '<thead><tr><th>Incorreto</th><th></th><th>Correto</th></tr></thead>' +
     `<tbody>${rows}</tbody></table>`;
 }
 
@@ -156,19 +201,22 @@ function attachGoToOptions() {
 // ---------------------------------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', () => {
-  loadWordMap(() => renderWordList());
+  loadAll(() => renderWordList());
 
   const testArea = document.getElementById('testArea');
-  testArea.addEventListener('input', () => {
-    if (!applying) correctTextarea(testArea);
+  testArea.addEventListener('input', (event) => {
+    if (applying) return;
+    if (Object.keys(wordMap).length > 0) correctTextarea(testArea);
+    if (settings.autoCapitalize) autoCapitalizeTextarea(testArea, event);
   });
 
   document.getElementById('clearTextBtn').addEventListener('click', () => {
     testArea.value = '';
     testArea.focus();
     const log = document.getElementById('correctionLog');
-    log.innerHTML = '<li class="no-corrections">No corrections yet</li>';
+    log.innerHTML = '<li class="no-corrections">Ainda sem correções</li>';
   });
 
   attachGoToOptions();
 });
+

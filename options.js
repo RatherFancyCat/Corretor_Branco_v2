@@ -1,20 +1,26 @@
 'use strict';
 
 let wordMap = {};
+let settings = { autoCapitalize: false, blacklistedDomains: [] };
 
 // ---------------------------------------------------------------------------
 // Storage helpers
 // ---------------------------------------------------------------------------
 
-function loadWordMap(callback) {
-  chrome.storage.local.get('wordMap', (data) => {
+function loadAll(callback) {
+  chrome.storage.local.get(['wordMap', 'settings'], (data) => {
     wordMap = data.wordMap || {};
+    settings = data.settings || { autoCapitalize: false, blacklistedDomains: [] };
     if (callback) callback();
   });
 }
 
 function saveWordMap(callback) {
   chrome.storage.local.set({ wordMap }, callback);
+}
+
+function saveSettings(callback) {
+  chrome.storage.local.set({ settings }, callback);
 }
 
 // ---------------------------------------------------------------------------
@@ -48,8 +54,8 @@ function renderWordList(filter) {
   if (visible.length === 0) {
     emptyMsg.hidden = false;
     emptyMsg.textContent = q
-      ? 'No matching word pairs found.'
-      : 'No word pairs added yet. Add your first correction above!';
+      ? 'Nenhum par de palavras encontrado.'
+      : 'Ainda não foram adicionados pares de palavras. Adicione a primeira correção acima!';
     return;
   }
 
@@ -64,10 +70,16 @@ function renderWordList(filter) {
       <td class="word-correct">${escapeHtml(correct)}</td>
       <td class="col-action">
         <button class="btn btn-sm btn-danger delete-btn"
-                data-word="${escapeHtml(incorrect)}">Delete</button>
+                data-word="${escapeHtml(incorrect)}">Eliminar</button>
       </td>`;
     tbody.appendChild(tr);
   }
+}
+
+function populateSettings() {
+  document.getElementById('autoCapitalizeChk').checked = settings.autoCapitalize;
+  document.getElementById('blacklistDomains').value =
+    (settings.blacklistedDomains || []).join('\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -129,19 +141,19 @@ document.getElementById('addWordForm').addEventListener('submit', (e) => {
   errorEl.hidden = true;
 
   if (!incorrect) {
-    errorEl.textContent = 'Please enter the misspelled word.';
+    errorEl.textContent = 'Por favor, introduza a palavra com erro.';
     errorEl.hidden = false;
     incorrectEl.focus();
     return;
   }
   if (!correct) {
-    errorEl.textContent = 'Please enter the correction.';
+    errorEl.textContent = 'Por favor, introduza a correção.';
     errorEl.hidden = false;
     correctEl.focus();
     return;
   }
   if (incorrect === correct.toLowerCase()) {
-    errorEl.textContent = 'The misspelled word and its correction cannot be the same.';
+    errorEl.textContent = 'A palavra com erro e a sua correção não podem ser iguais.';
     errorEl.hidden = false;
     return;
   }
@@ -174,6 +186,48 @@ document.getElementById('wordTableBody').addEventListener('click', (e) => {
 
 document.getElementById('searchInput').addEventListener('input', (e) => {
   renderWordList(e.target.value);
+});
+
+// ---------------------------------------------------------------------------
+// Event: Clear all
+// ---------------------------------------------------------------------------
+
+document.getElementById('clearAllBtn').addEventListener('click', () => {
+  if (Object.keys(wordMap).length === 0) {
+    alert('A lista de palavras já está vazia.');
+    return;
+  }
+  if (confirm('Eliminar TODOS os pares de palavras? Esta ação não pode ser desfeita.')) {
+    wordMap = {};
+    saveWordMap(() => renderWordList());
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Event: Settings – auto-capitalise
+// ---------------------------------------------------------------------------
+
+document.getElementById('autoCapitalizeChk').addEventListener('change', (e) => {
+  settings.autoCapitalize = e.target.checked;
+  saveSettings();
+});
+
+// ---------------------------------------------------------------------------
+// Event: Settings – blacklist save
+// ---------------------------------------------------------------------------
+
+document.getElementById('saveBlacklistBtn').addEventListener('click', () => {
+  const raw = document.getElementById('blacklistDomains').value;
+  settings.blacklistedDomains = raw
+    .split('\n')
+    .map((d) => d.trim().toLowerCase())
+    .filter((d) => d.length > 0);
+
+  const btn = document.getElementById('saveBlacklistBtn');
+  saveSettings(() => {
+    btn.textContent = '✓ Guardado';
+    setTimeout(() => { btn.textContent = 'Guardar'; }, 1500);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -211,8 +265,8 @@ document.getElementById('importFile').addEventListener('change', (e) => {
 
     saveWordMap(() => {
       renderWordList(document.getElementById('searchInput').value);
-      const msg = `Imported ${imported} word pair(s).` +
-        (skipped > 0 ? ` Skipped ${skipped} invalid row(s).` : '');
+      const msg = `Importado(s) ${imported} par(es) de palavras.` +
+        (skipped > 0 ? ` Ignorada(s) ${skipped} linha(s) inválida(s).` : '');
       alert(msg);
     });
   };
@@ -227,7 +281,7 @@ document.getElementById('importFile').addEventListener('change', (e) => {
 document.getElementById('exportBtn').addEventListener('click', () => {
   const entries = Object.entries(wordMap);
   if (entries.length === 0) {
-    alert('No word pairs to export.');
+    alert('Não há pares de palavras para exportar.');
     return;
   }
 
@@ -237,7 +291,7 @@ document.getElementById('exportBtn').addEventListener('click', () => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'corretor_branco_words.csv';
+  a.download = 'corretor_branco_palavras.csv';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -245,22 +299,11 @@ document.getElementById('exportBtn').addEventListener('click', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Event: Clear all
-// ---------------------------------------------------------------------------
-
-document.getElementById('clearAllBtn').addEventListener('click', () => {
-  if (Object.keys(wordMap).length === 0) {
-    alert('The word list is already empty.');
-    return;
-  }
-  if (confirm('Delete ALL word pairs? This cannot be undone.')) {
-    wordMap = {};
-    saveWordMap(() => renderWordList());
-  }
-});
-
-// ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 
-loadWordMap(() => renderWordList());
+loadAll(() => {
+  renderWordList();
+  populateSettings();
+});
+
