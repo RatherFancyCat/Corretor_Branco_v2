@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Corretor Branco – Word List</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <img src="icons/icon48.png" alt="" class="logo">
+      <div>
+        <h1>Corretor Branco</h1>
+        <p>Manage your word correction list</p>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- Add word pair -->
+    <section class="card">
+      <h2>Add Word Pair</h2>
+      <form id="addWordForm" class="add-form" autocomplete="off">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="incorrectWord">Misspelled word</label>
+            <input type="text" id="incorrectWord" placeholder="e.g. teh" spellcheck="false">
+          </div>
+          <span class="form-arrow" aria-hidden="true">&#8594;</span>
+          <div class="form-group">
+            <label for="correctWord">Correction</label>
+            <input type="text" id="correctWord" placeholder="e.g. the" spellcheck="false">
+          </div>
+          <button type="submit" class="btn btn-primary">Add</button>
+        </div>
+        <p id="addError" class="error-msg" hidden></p>
+      </form>
+    </section>
+
+    <!-- Toolbar -->
+    <section class="card toolbar-card">
+      <div class="toolbar-left">
+        <button id="importBtn" class="btn btn-secondary">&#8679; Import CSV</button>
+        <button id="exportBtn" class="btn btn-secondary">&#8681; Export CSV</button>
+        <input type="file" id="importFile" accept=".csv" hidden>
+      </div>
+      <div class="toolbar-right">
+        <input type="text" id="searchInput" class="search-input" placeholder="&#128269; Search words…">
+        <button id="clearAllBtn" class="btn btn-danger">&#128465; Clear All</button>
+      </div>
+    </section>
+
+    <!-- Word list -->
+    <section class="card">
+      <div class="table-header">
+        <h2>Word List</h2>
+        <span id="wordCount" class="badge">0</span>
+      </div>
+      <div class="table-wrapper">
+        <table id="wordTable">
+          <thead>
+            <tr>
+              <th>Misspelled Word</th>
+              <th>Correction</th>
+              <th class="col-action">Action</th>
+            </tr>
+          </thead>
+          <tbody id="wordTableBody"></tbody>
+        </table>
+        <p id="emptyMessage" class="empty-msg">
+          No word pairs added yet. Add your first correction above!
+        </p>
+      </div>
+    </section>
+
+  </div><!-- /.container -->
+
+  <script src="options.js"></script>
+</body>
+</html>

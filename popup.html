@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Corretor Branco</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="header">
+    <img src="icons/icon48.png" alt="Corretor Branco" class="logo">
+    <div class="header-text">
+      <h1>Corretor Branco</h1>
+      <p class="subtitle">Spell Corrector</p>
+    </div>
+  </div>
+
+  <div class="status-row">
+    <span class="status-label">Active</span>
+    <label class="toggle">
+      <input type="checkbox" id="enabledToggle">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-number" id="wordCount">0</span>
+      <span class="stat-label">word pairs loaded</span>
+    </div>
+  </div>
+
+  <div class="buttons">
+    <button id="openOptions" class="btn btn-primary">&#128221; Manage Words</button>
+    <button id="openSandbox" class="btn btn-secondary">&#129514; Test Sandbox</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

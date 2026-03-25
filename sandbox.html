@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Corretor Branco – Sandbox</title>
+  <link rel="stylesheet" href="sandbox.css">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <img src="icons/icon48.png" alt="" class="logo">
+      <div>
+        <h1>Sandbox</h1>
+        <p>Test your word corrections in real time</p>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="split-layout">
+
+      <!-- Left: test area -->
+      <section class="card flex-grow">
+        <div class="section-header">
+          <h2>Test Area</h2>
+          <button id="clearTextBtn" class="btn btn-sm btn-secondary">Clear</button>
+        </div>
+        <p class="hint">
+          Type text below. Words are corrected automatically when you type a space
+          or punctuation after them.
+        </p>
+        <textarea id="testArea"
+                  placeholder="Start typing here… e.g. type a misspelled word then press Space."
+                  spellcheck="false"
+                  autocorrect="off"
+                  autocomplete="off"
+                  autocapitalize="off"></textarea>
+
+        <div class="correction-log">
+          <h3>Corrections applied</h3>
+          <ul id="correctionLog">
+            <li class="no-corrections">No corrections yet</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Right: active word list -->
+      <section class="card word-list-panel">
+        <div class="panel-header">
+          <h2>Active corrections</h2>
+          <span id="wordCount" class="badge">0</span>
+        </div>
+        <div id="wordListContainer">
+          <p class="no-words">
+            No word pairs loaded.
+            <a href="#" id="goToOptions">Add words in the options page.</a>
+          </p>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="sandbox.js"></script>
+</body>
+</html>
