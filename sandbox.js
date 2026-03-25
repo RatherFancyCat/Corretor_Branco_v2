@@ -4,8 +4,11 @@ let wordMap = {};
 let settings = { autoCapitalize: false, blacklistedDomains: [] };
 let applying = false;
 
-const SEPARATOR_RE = /[\s.,!?;:'"()\[\]{}\-\/\\]/;
+const PUNCT_CLASS = ".,!?;:'\"()\\[\\]{}\\-\\/\\\\«»\u201C\u201D\u2018\u2019";
+const SEPARATOR_RE = new RegExp('[\\s' + PUNCT_CLASS + ']');
 const SENTENCE_END_RE = /[.!?]/;
+const LEADING_PUNCT_RE = new RegExp('^[' + PUNCT_CLASS + ']+');
+const TRAILING_PUNCT_RE = new RegExp('[' + PUNCT_CLASS + ']+$');
 
 // ---------------------------------------------------------------------------
 // Storage
@@ -62,18 +65,25 @@ function correctTextarea(element) {
   const wordMatch = textBefore.match(/(\S+)$/);
   if (!wordMatch) return;
 
-  const typedWord = wordMatch[1];
+  const rawToken = wordMatch[1];
+  // Strip leading and trailing separator characters so that words wrapped in
+  // quotes or parentheses (e.g. "(nao)", '"nao"', «nao») are still matched.
+  const strippedLeading = rawToken.replace(LEADING_PUNCT_RE, '');
+  const typedWord = strippedLeading.replace(TRAILING_PUNCT_RE, '');
+  if (!typedWord) return;
   const correction = getCorrection(typedWord);
   if (!correction) return;
 
-  const wordStart = cursorPos - 1 - typedWord.length;
+  const leadingLen = rawToken.length - strippedLeading.length;
+  const trailingLen = strippedLeading.length - typedWord.length;
+  const wordStart = cursorPos - 1 - rawToken.length + leadingLen;
 
   applying = true;
   try {
     const newValue =
       value.substring(0, wordStart) + correction + value.substring(wordStart + typedWord.length);
     element.value = newValue;
-    const newCursorPos = wordStart + correction.length + 1;
+    const newCursorPos = wordStart + correction.length + trailingLen + 1;
     element.setSelectionRange(newCursorPos, newCursorPos);
     logCorrection(typedWord, correction);
   } finally {

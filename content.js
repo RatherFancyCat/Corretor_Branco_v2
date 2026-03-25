@@ -9,7 +9,15 @@ let blockedByDomain = false;
 let applying = false;
 
 // Characters that mark the end of a word
-const SEPARATOR_RE = /[\s.,!?;:'"()\[\]{}\-\/\\]/;
+// PUNCT_CLASS is the non-whitespace subset; SEPARATOR_RE also includes \s.
+const PUNCT_CLASS = ".,!?;:'\"()\\[\\]{}\\-\\/\\\\«»\u201C\u201D\u2018\u2019";
+const SEPARATOR_RE = new RegExp('[\\s' + PUNCT_CLASS + ']');
+
+// Used to strip wrapping punctuation from an extracted token so that words
+// inside quotes or parentheses (e.g. "(nao)", '"nao"', «nao») are still
+// matched in the word map.
+const LEADING_PUNCT_RE = new RegExp('^[' + PUNCT_CLASS + ']+');
+const TRAILING_PUNCT_RE = new RegExp('[' + PUNCT_CLASS + ']+$');
 
 // Sentence-ending characters (for auto-capitalise)
 const SENTENCE_END_RE = /[.!?]/;
@@ -103,11 +111,18 @@ function correctInputElement(element) {
   const wordMatch = textBefore.match(/(\S+)$/);
   if (!wordMatch) return;
 
-  const typedWord = wordMatch[1];
+  const rawToken = wordMatch[1];
+  // Strip leading and trailing separator characters so that words wrapped in
+  // quotes or parentheses (e.g. "(nao)", '"nao"', «nao») are still matched.
+  const strippedLeading = rawToken.replace(LEADING_PUNCT_RE, '');
+  const typedWord = strippedLeading.replace(TRAILING_PUNCT_RE, '');
+  if (!typedWord) return;
   const correction = getCorrection(typedWord);
   if (!correction) return;
 
-  const wordStart = cursorPos - 1 - typedWord.length;
+  const leadingLen = rawToken.length - strippedLeading.length;
+  const trailingLen = strippedLeading.length - typedWord.length;
+  const wordStart = cursorPos - 1 - rawToken.length + leadingLen;
 
   applying = true;
   try {
@@ -115,7 +130,7 @@ function correctInputElement(element) {
       value.substring(0, wordStart) + correction + value.substring(wordStart + typedWord.length);
     element.value = newValue;
 
-    const newCursorPos = wordStart + correction.length + 1; // +1 for the separator
+    const newCursorPos = wordStart + correction.length + trailingLen + 1; // +1 for the separator
     element.setSelectionRange(newCursorPos, newCursorPos);
 
     // Notify JS frameworks (React, Vue, etc.) that the value changed.
@@ -150,11 +165,18 @@ function correctContentEditable(element) {
   const wordMatch = textBefore.match(/(\S+)$/);
   if (!wordMatch) return;
 
-  const typedWord = wordMatch[1];
+  const rawToken = wordMatch[1];
+  // Strip leading and trailing separator characters so that words wrapped in
+  // quotes or parentheses (e.g. "(nao)", '"nao"', «nao») are still matched.
+  const strippedLeading = rawToken.replace(LEADING_PUNCT_RE, '');
+  const typedWord = strippedLeading.replace(TRAILING_PUNCT_RE, '');
+  if (!typedWord) return;
   const correction = getCorrection(typedWord);
   if (!correction) return;
 
-  const wordStart = cursorPos - 1 - typedWord.length;
+  const leadingLen = rawToken.length - strippedLeading.length;
+  const trailingLen = strippedLeading.length - typedWord.length;
+  const wordStart = cursorPos - 1 - rawToken.length + leadingLen;
 
   applying = true;
   try {
@@ -162,7 +184,7 @@ function correctContentEditable(element) {
       text.substring(0, wordStart) + correction + text.substring(wordStart + typedWord.length);
 
     const newRange = document.createRange();
-    const newOffset = Math.min(wordStart + correction.length + 1, node.textContent.length);
+    const newOffset = Math.min(wordStart + correction.length + trailingLen + 1, node.textContent.length);
     newRange.setStart(node, newOffset);
     newRange.collapse(true);
     selection.removeAllRanges();
