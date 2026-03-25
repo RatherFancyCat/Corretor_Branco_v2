@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Corretor Branco – Lista de Palavras</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+
+<body>
+  <header>
+    <div class="header-inner">
+      <img src="icons/icon48.png" alt="" class="logo">
+      <div>
+        <h1>Corretor Branco</h1>
+        <p>Gere a sua lista de correções ortográficas</p>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- Definições -->
+    <section class="card">
+      <h2>Definições</h2>
+      <div class="settings-list">
+
+        <label class="setting-item">
+          <input type="checkbox" id="autoCapitalizeChk">
+          <div class="setting-text">
+            <span class="setting-label">Capitalizar automaticamente a primeira palavra de uma frase</span>
+            <span class="setting-desc">Aplica-se no início de um novo parágrafo ou após um símbolo de fim de frase (como
+              «.», «!» ou «?»).</span>
+          </div>
+        </label>
+
+        <div class="setting-item setting-item--block">
+          <label class="setting-label" for="blacklistDomains">Lista negra de domínios</label>
+          <span class="setting-desc">Se a página atual pertencer a um domínio desta lista, a extensão não realizará
+            quaisquer correções. Introduza um domínio por linha (ex: exemplo.com).</span>
+          <textarea id="blacklistDomains" class="domain-textarea" placeholder="exemplo.com&#10;outrosite.pt"
+            spellcheck="false" autocomplete="off"></textarea>
+          <button id="saveBlacklistBtn" class="btn btn-primary btn-sm">Guardar</button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Importar / Exportar -->
+    <section class="card">
+      <h2>Importar / Exportar</h2>
+      <div class="toolbar-buttons">
+        <button id="importBtn" class="btn btn-secondary">&#8679; Importar CSV</button>
+        <button id="exportBtn" class="btn btn-secondary">&#8681; Exportar CSV</button>
+        <input type="file" id="importFile" accept=".csv" hidden>
+      </div>
+    </section>
+
+    <!-- Adicionar par de palavras -->
+    <section class="card">
+      <h2>Adicionar Par de Palavras</h2>
+      <form id="addWordForm" class="add-form" autocomplete="off">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="incorrectWord">Palavra com erro</label>
+            <input type="text" id="incorrectWord" placeholder="ex: nao" spellcheck="false">
+          </div>
+          <span class="form-arrow" aria-hidden="true">&#8594;</span>
+          <div class="form-group">
+            <label for="correctWord">Correção</label>
+            <input type="text" id="correctWord" placeholder="ex: não" spellcheck="false">
+          </div>
+          <button type="submit" class="btn btn-primary">Adicionar</button>
+        </div>
+        <p id="addError" class="error-msg" hidden></p>
+      </form>
+    </section>
+
+    <!-- Lista de palavras -->
+    <section class="card">
+      <div class="table-header">
+        <div class="table-title-row">
+          <h2>Lista de Palavras</h2>
+          <span id="wordCount" class="badge">0</span>
+        </div>
+        <div class="table-controls">
+          <input type="text" id="searchInput" class="search-input" placeholder="&#128269; Pesquisar palavras…">
+          <button id="clearAllBtn" class="btn btn-danger">&#128465; Limpar Tudo</button>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table id="wordTable">
+          <thead>
+            <tr>
+              <th>Palavra com Erro</th>
+              <th>Correção</th>
+              <th class="col-action">Ação</th>
+            </tr>
+          </thead>
+          <tbody id="wordTableBody"></tbody>
+        </table>
+        <p id="emptyMessage" class="empty-msg">
+          Ainda não foram adicionados pares de palavras. Adicione a primeira correção acima!
+        </p>
+      </div>
+    </section>
+
+  </div><!-- /.container -->
+
+  <footer class="card">
+    <p>Criado por: Nuno Seca<br>
+      <a href="mailto:nuno.seca@trofasaude.com">Contactar</a>
+    </p>
+    <p>Outros Projetos Publicos: <br>
+      <a href="https://github.com/RatherFancyCat?tab=repositories">Link GitHub</a>
+    </p>
+  </footer>
+
+  <script src="options.js"></script>
+</body>
+
+</html>

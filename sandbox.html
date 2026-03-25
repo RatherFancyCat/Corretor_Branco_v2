@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Corretor Branco – Área de Teste</title>
+  <link rel="stylesheet" href="sandbox.css">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <img src="icons/icon48.png" alt="" class="logo">
+      <div>
+        <h1>Área de Teste</h1>
+        <p>Teste as suas correções ortográficas em tempo real</p>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="split-layout">
+
+      <!-- Left: test area -->
+      <section class="card flex-grow">
+        <div class="section-header">
+          <h2>Área de Teste</h2>
+          <button id="clearTextBtn" class="btn btn-sm btn-secondary">Limpar</button>
+        </div>
+        <p class="hint">
+          Escreva texto abaixo. As palavras são corrigidas automaticamente ao escrever
+          um espaço ou pontuação depois delas.
+        </p>
+        <textarea id="testArea"
+                  placeholder="Comece a escrever aqui… ex: escreva uma palavra com erro e prima Espaço."
+                  spellcheck="false"
+                  autocorrect="off"
+                  autocomplete="off"
+                  autocapitalize="off"></textarea>
+
+        <div class="correction-log">
+          <h3>Correções aplicadas</h3>
+          <ul id="correctionLog">
+            <li class="no-corrections">Ainda sem correções</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Right: active word list -->
+      <section class="card word-list-panel">
+        <div class="panel-header">
+          <h2>Correções ativas</h2>
+          <span id="wordCount" class="badge">0</span>
+        </div>
+        <div id="wordListContainer">
+          <p class="no-words">
+            Nenhum par de palavras carregado.
+            <a href="#" id="goToOptions">Adicione palavras na página de opções.</a>
+          </p>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="sandbox.js"></script>
+</body>
+</html>
