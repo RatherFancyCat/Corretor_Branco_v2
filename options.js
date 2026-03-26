@@ -152,7 +152,7 @@ document.getElementById('addWordForm').addEventListener('submit', (e) => {
     correctEl.focus();
     return;
   }
-  if (incorrect === correct.toLowerCase()) {
+  if (incorrect === correct) {
     errorEl.textContent = 'A palavra com erro e a sua correção não podem ser iguais.';
     errorEl.hidden = false;
     return;
@@ -258,7 +258,7 @@ document.getElementById('importFile').addEventListener('change', (e) => {
       const incorrect = row[0].toLowerCase();
       const correct = row[1];
       if (!incorrect || !correct) { skipped++; continue; }
-      if (incorrect === correct.toLowerCase()) { skipped++; continue; }
+      if (incorrect === correct) { skipped++; continue; }
       wordMap[incorrect] = correct;
       imported++;
     }
