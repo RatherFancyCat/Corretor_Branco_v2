@@ -15,10 +15,12 @@ const TRAILING_PUNCT_RE = new RegExp('[' + PUNCT_CLASS + ']+$');
 // ---------------------------------------------------------------------------
 
 function loadAll(callback) {
-  chrome.storage.local.get(['wordMap', 'settings'], (data) => {
+  chrome.storage.local.get(['wordMap', 'settings', 'language'], (data) => {
     wordMap = data.wordMap || {};
     settings = data.settings || { autoCapitalize: false, blacklistedDomains: [] };
-    if (callback) callback();
+    const lang = data.language || 'pt';
+    I18n._lang = lang;
+    if (callback) callback(lang);
   });
 }
 
@@ -30,6 +32,16 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
   if (changes.settings) {
     settings = changes.settings.newValue || { autoCapitalize: false, blacklistedDomains: [] };
+  }
+  if (changes.language) {
+    const lang = changes.language.newValue || 'pt';
+    I18n.apply(lang);
+    renderWordList();
+    // Re-render the "no corrections yet" placeholder if it is still showing
+    const log = document.getElementById('correctionLog');
+    if (log && log.querySelector('.no-corrections')) {
+      log.innerHTML = `<li class="no-corrections">${I18n.t('sandbox-no-corrections')}</li>`;
+    }
   }
 });
 
@@ -174,8 +186,8 @@ function renderWordList() {
 
   if (entries.length === 0) {
     container.innerHTML =
-      '<p class="no-words">Nenhum par de palavras carregado. ' +
-      '<a href="#" id="goToOptions">Adicione palavras na página de opções.</a></p>';
+      `<p class="no-words">${I18n.t('sandbox-no-words')} ` +
+      `<a href="#" id="goToOptions">${I18n.t('sandbox-go-options')}</a></p>`;
     attachGoToOptions();
     return;
   }
@@ -192,7 +204,7 @@ function renderWordList() {
 
   container.innerHTML =
     '<table class="word-table">' +
-    '<thead><tr><th>Incorreto</th><th></th><th>Correto</th></tr></thead>' +
+    `<thead><tr><th>${I18n.t('sandbox-th-incorrect')}</th><th></th><th>${I18n.t('sandbox-th-correct')}</th></tr></thead>` +
     `<tbody>${rows}</tbody></table>`;
 }
 
@@ -211,7 +223,10 @@ function attachGoToOptions() {
 // ---------------------------------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', () => {
-  loadAll(() => renderWordList());
+  loadAll((lang) => {
+    I18n.apply(lang);
+    renderWordList();
+  });
 
   const testArea = document.getElementById('testArea');
   testArea.addEventListener('input', (event) => {
@@ -224,9 +239,8 @@ document.addEventListener('DOMContentLoaded', () => {
     testArea.value = '';
     testArea.focus();
     const log = document.getElementById('correctionLog');
-    log.innerHTML = '<li class="no-corrections">Ainda sem correções</li>';
+    log.innerHTML = `<li class="no-corrections">${I18n.t('sandbox-no-corrections')}</li>`;
   });
 
   attachGoToOptions();
 });
-

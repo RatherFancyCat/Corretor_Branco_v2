@@ -8,10 +8,12 @@ let settings = { autoCapitalize: false, blacklistedDomains: [] };
 // ---------------------------------------------------------------------------
 
 function loadAll(callback) {
-  chrome.storage.local.get(['wordMap', 'settings'], (data) => {
+  chrome.storage.local.get(['wordMap', 'settings', 'language'], (data) => {
     wordMap = data.wordMap || {};
     settings = data.settings || { autoCapitalize: false, blacklistedDomains: [] };
-    if (callback) callback();
+    const lang = data.language || 'pt';
+    I18n._lang = lang;
+    if (callback) callback(lang);
   });
 }
 
@@ -54,8 +56,8 @@ function renderWordList(filter) {
   if (visible.length === 0) {
     emptyMsg.hidden = false;
     emptyMsg.textContent = q
-      ? 'Nenhum par de palavras encontrado.'
-      : 'Ainda não foram adicionados pares de palavras. Adicione a primeira correção acima!';
+      ? I18n.t('err-no-words-found')
+      : I18n.t('opts-empty-msg');
     return;
   }
 
@@ -70,7 +72,7 @@ function renderWordList(filter) {
       <td class="word-correct">${escapeHtml(correct)}</td>
       <td class="col-action">
         <button class="btn btn-sm btn-danger delete-btn"
-                data-word="${escapeHtml(incorrect)}">Eliminar</button>
+                data-word="${escapeHtml(incorrect)}">${I18n.t('btn-delete')}</button>
       </td>`;
     tbody.appendChild(tr);
   }
@@ -141,19 +143,19 @@ document.getElementById('addWordForm').addEventListener('submit', (e) => {
   errorEl.hidden = true;
 
   if (!incorrect) {
-    errorEl.textContent = 'Por favor, introduza a palavra com erro.';
+    errorEl.textContent = I18n.t('err-empty-incorrect');
     errorEl.hidden = false;
     incorrectEl.focus();
     return;
   }
   if (!correct) {
-    errorEl.textContent = 'Por favor, introduza a correção.';
+    errorEl.textContent = I18n.t('err-empty-correct');
     errorEl.hidden = false;
     correctEl.focus();
     return;
   }
   if (incorrect === correct) {
-    errorEl.textContent = 'A palavra com erro e a sua correção não podem ser iguais.';
+    errorEl.textContent = I18n.t('err-same-words');
     errorEl.hidden = false;
     return;
   }
@@ -194,10 +196,10 @@ document.getElementById('searchInput').addEventListener('input', (e) => {
 
 document.getElementById('clearAllBtn').addEventListener('click', () => {
   if (Object.keys(wordMap).length === 0) {
-    alert('A lista de palavras já está vazia.');
+    alert(I18n.t('err-list-empty'));
     return;
   }
-  if (confirm('Eliminar TODOS os pares de palavras? Esta ação não pode ser desfeita.')) {
+  if (confirm(I18n.t('confirm-clear-all'))) {
     wordMap = {};
     saveWordMap(() => renderWordList());
   }
@@ -225,8 +227,20 @@ document.getElementById('saveBlacklistBtn').addEventListener('click', () => {
 
   const btn = document.getElementById('saveBlacklistBtn');
   saveSettings(() => {
-    btn.textContent = '✓ Guardado';
-    setTimeout(() => { btn.textContent = 'Guardar'; }, 1500);
+    btn.textContent = I18n.t('opts-btn-saved');
+    setTimeout(() => { btn.textContent = I18n.t('opts-btn-save'); }, 1500);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Event: Language selector
+// ---------------------------------------------------------------------------
+
+document.getElementById('languageSelect').addEventListener('change', (e) => {
+  const lang = e.target.value;
+  chrome.storage.local.set({ language: lang }, () => {
+    I18n.apply(lang);
+    renderWordList(document.getElementById('searchInput').value);
   });
 });
 
@@ -265,8 +279,8 @@ document.getElementById('importFile').addEventListener('change', (e) => {
 
     saveWordMap(() => {
       renderWordList(document.getElementById('searchInput').value);
-      const msg = `Importado(s) ${imported} par(es) de palavras.` +
-        (skipped > 0 ? ` Ignorada(s) ${skipped} linha(s) inválida(s).` : '');
+      let msg = I18n.t('msg-imported', { count: imported });
+      if (skipped > 0) msg += ' ' + I18n.t('msg-skipped', { count: skipped });
       alert(msg);
     });
   };
@@ -281,7 +295,7 @@ document.getElementById('importFile').addEventListener('change', (e) => {
 document.getElementById('exportBtn').addEventListener('click', () => {
   const entries = Object.entries(wordMap);
   if (entries.length === 0) {
-    alert('Não há pares de palavras para exportar.');
+    alert(I18n.t('err-nothing-to-export'));
     return;
   }
 
@@ -299,11 +313,26 @@ document.getElementById('exportBtn').addEventListener('click', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Sync language changes made from another page (e.g. popup)
+// ---------------------------------------------------------------------------
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return;
+  if (changes.language) {
+    const lang = changes.language.newValue || 'pt';
+    I18n.apply(lang);
+    document.getElementById('languageSelect').value = lang;
+    renderWordList(document.getElementById('searchInput').value);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 
-loadAll(() => {
+loadAll((lang) => {
+  I18n.apply(lang);
+  document.getElementById('languageSelect').value = lang;
   renderWordList();
   populateSettings();
 });
-

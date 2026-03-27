@@ -14,7 +14,7 @@
       <img src="icons/icon48.png" alt="" class="logo">
       <div>
         <h1>Corretor Branco</h1>
-        <p>Gere a sua lista de correções ortográficas</p>
+        <p data-i18n="opts-header-sub">Gere a sua lista de correções ortográficas</p>
       </div>
     </div>
   </header>
@@ -23,25 +23,41 @@
 
     <!-- Definições -->
     <section class="card">
-      <h2>Definições</h2>
+      <h2 data-i18n="opts-settings-h2">Definições</h2>
       <div class="settings-list">
+
+        <!-- Language selector -->
+        <div class="setting-item setting-item--block">
+          <label class="setting-label" for="languageSelect" data-i18n="opts-lang-label">Idioma da Interface</label>
+          <span class="setting-desc" data-i18n="opts-lang-desc">Selecione o idioma da interface da extensão.</span>
+          <select id="languageSelect" class="lang-select">
+            <option value="pt">🇵🇹 Português (Portugal)</option>
+            <option value="en">🇬🇧 English</option>
+            <option value="es">🇪🇸 Español</option>
+            <option value="fr">🇫🇷 Français</option>
+            <option value="de">🇩🇪 Deutsch</option>
+            <option value="zh">🇨🇳 中文</option>
+          </select>
+        </div>
 
         <label class="setting-item">
           <input type="checkbox" id="autoCapitalizeChk">
           <div class="setting-text">
-            <span class="setting-label">Capitalizar automaticamente a primeira palavra de uma frase</span>
-            <span class="setting-desc">Aplica-se no início de um novo parágrafo ou após um símbolo de fim de frase (como
+            <span class="setting-label" data-i18n="opts-autocap-label">Capitalizar automaticamente a primeira palavra de uma frase</span>
+            <span class="setting-desc" data-i18n="opts-autocap-desc">Aplica-se no início de um novo parágrafo ou após um símbolo de fim de frase (como
               «.», «!» ou «?»).</span>
           </div>
         </label>
 
         <div class="setting-item setting-item--block">
-          <label class="setting-label" for="blacklistDomains">Lista negra de domínios</label>
-          <span class="setting-desc">Se a página atual pertencer a um domínio desta lista, a extensão não realizará
+          <label class="setting-label" for="blacklistDomains" data-i18n="opts-blacklist-label">Lista negra de domínios</label>
+          <span class="setting-desc" data-i18n="opts-blacklist-desc">Se a página atual pertencer a um domínio desta lista, a extensão não realizará
             quaisquer correções. Introduza um domínio por linha (ex: exemplo.com).</span>
-          <textarea id="blacklistDomains" class="domain-textarea" placeholder="exemplo.com&#10;outrosite.pt"
+          <textarea id="blacklistDomains" class="domain-textarea"
+            data-i18n-placeholder="opts-blacklist-ph"
+            placeholder="exemplo.com&#10;outrosite.pt"
             spellcheck="false" autocomplete="off"></textarea>
-          <button id="saveBlacklistBtn" class="btn btn-primary btn-sm">Guardar</button>
+          <button id="saveBlacklistBtn" class="btn btn-primary btn-sm" data-i18n="opts-btn-save">Guardar</button>
         </div>
 
       </div>
@@ -49,29 +65,33 @@
 
     <!-- Importar / Exportar -->
     <section class="card">
-      <h2>Importar / Exportar</h2>
+      <h2 data-i18n="opts-import-h2">Importar / Exportar</h2>
       <div class="toolbar-buttons">
-        <button id="importBtn" class="btn btn-secondary">&#8679; Importar CSV</button>
-        <button id="exportBtn" class="btn btn-secondary">&#8681; Exportar CSV</button>
+        <button id="importBtn" class="btn btn-secondary" data-i18n="opts-btn-import">&#8679; Importar CSV</button>
+        <button id="exportBtn" class="btn btn-secondary" data-i18n="opts-btn-export">&#8681; Exportar CSV</button>
         <input type="file" id="importFile" accept=".csv" hidden>
       </div>
     </section>
 
     <!-- Adicionar par de palavras -->
     <section class="card">
-      <h2>Adicionar Par de Palavras</h2>
+      <h2 data-i18n="opts-add-h2">Adicionar Par de Palavras</h2>
       <form id="addWordForm" class="add-form" autocomplete="off">
         <div class="form-row">
           <div class="form-group">
-            <label for="incorrectWord">Palavra com erro</label>
-            <input type="text" id="incorrectWord" placeholder="ex: nao">
+            <label for="incorrectWord" data-i18n="opts-incorrect-label">Palavra com erro</label>
+            <input type="text" id="incorrectWord"
+              data-i18n-placeholder="opts-incorrect-ph"
+              placeholder="ex: nao">
           </div>
           <span class="form-arrow" aria-hidden="true">&#8594;</span>
           <div class="form-group">
-            <label for="correctWord">Correção</label>
-            <input type="text" id="correctWord" placeholder="ex: não">
+            <label for="correctWord" data-i18n="opts-correct-label">Correção</label>
+            <input type="text" id="correctWord"
+              data-i18n-placeholder="opts-correct-ph"
+              placeholder="ex: não">
           </div>
-          <button type="submit" class="btn btn-primary">Adicionar</button>
+          <button type="submit" class="btn btn-primary" data-i18n="opts-btn-add">Adicionar</button>
         </div>
         <p id="addError" class="error-msg" hidden></p>
       </form>
@@ -81,26 +101,28 @@
     <section class="card">
       <div class="table-header">
         <div class="table-title-row">
-          <h2>Lista de Palavras</h2>
+          <h2 data-i18n="opts-wordlist-h2">Lista de Palavras</h2>
           <span id="wordCount" class="badge">0</span>
         </div>
         <div class="table-controls">
-          <input type="text" id="searchInput" class="search-input" placeholder="&#128269; Pesquisar palavras…">
-          <button id="clearAllBtn" class="btn btn-danger">&#128465; Limpar Tudo</button>
+          <input type="text" id="searchInput" class="search-input"
+            data-i18n-placeholder="opts-search-ph"
+            placeholder="&#128269; Pesquisar palavras…">
+          <button id="clearAllBtn" class="btn btn-danger" data-i18n="opts-btn-clear-all">&#128465; Limpar Tudo</button>
         </div>
       </div>
       <div class="table-wrapper">
         <table id="wordTable">
           <thead>
             <tr>
-              <th>Palavra com Erro</th>
-              <th>Correção</th>
-              <th class="col-action">Ação</th>
+              <th data-i18n="opts-th-incorrect">Palavra com Erro</th>
+              <th data-i18n="opts-th-correct">Correção</th>
+              <th class="col-action" data-i18n="opts-th-action">Ação</th>
             </tr>
           </thead>
           <tbody id="wordTableBody"></tbody>
         </table>
-        <p id="emptyMessage" class="empty-msg">
+        <p id="emptyMessage" class="empty-msg" data-i18n="opts-empty-msg">
           Ainda não foram adicionados pares de palavras. Adicione a primeira correção acima!
         </p>
       </div>
@@ -117,6 +139,7 @@
     </p>
   </footer>
 
+  <script src="i18n.js"></script>
   <script src="options.js"></script>
 </body>
 
