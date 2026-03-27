@@ -7,6 +7,10 @@
 const TRANSLATIONS = {
   // ---- Portuguese (Portugal) – default ----
   pt: {
+    'app-name':              'Corretor Branco',
+    'page-title-opts':       'Corretor Branco \u2013 Lista de Palavras',
+    'page-title-sandbox':    'Corretor Branco \u2013 Área de Teste',
+
     'popup-subtitle':        'Corretor Ortográfico',
     'popup-status-active':   'Ativo',
     'popup-stat-label':      'pares de palavras carregados',
@@ -69,6 +73,10 @@ const TRANSLATIONS = {
 
   // ---- English ----
   en: {
+    'app-name':              'Corretor Branco',
+    'page-title-opts':       'Corretor Branco \u2013 Word List',
+    'page-title-sandbox':    'Corretor Branco \u2013 Test Area',
+
     'popup-subtitle':        'Spell Checker',
     'popup-status-active':   'Active',
     'popup-stat-label':      'word pairs loaded',
@@ -131,6 +139,10 @@ const TRANSLATIONS = {
 
   // ---- Spanish ----
   es: {
+    'app-name':              'Corretor Branco',
+    'page-title-opts':       'Corretor Branco \u2013 Lista de Palabras',
+    'page-title-sandbox':    'Corretor Branco \u2013 Área de Prueba',
+
     'popup-subtitle':        'Corrector Ortográfico',
     'popup-status-active':   'Activo',
     'popup-stat-label':      'pares de palabras cargados',
@@ -193,6 +205,10 @@ const TRANSLATIONS = {
 
   // ---- French ----
   fr: {
+    'app-name':              'Corretor Branco',
+    'page-title-opts':       'Corretor Branco \u2013 Liste de mots',
+    'page-title-sandbox':    'Corretor Branco \u2013 Zone de test',
+
     'popup-subtitle':        'Correcteur Orthographique',
     'popup-status-active':   'Actif',
     'popup-stat-label':      'paires de mots chargées',
@@ -255,6 +271,10 @@ const TRANSLATIONS = {
 
   // ---- German ----
   de: {
+    'app-name':              'Corretor Branco',
+    'page-title-opts':       'Corretor Branco \u2013 Wortliste',
+    'page-title-sandbox':    'Corretor Branco \u2013 Testbereich',
+
     'popup-subtitle':        'Rechtschreibprüfung',
     'popup-status-active':   'Aktiv',
     'popup-stat-label':      'Wortpaare geladen',
@@ -317,6 +337,10 @@ const TRANSLATIONS = {
 
   // ---- Chinese (Simplified) ----
   zh: {
+    'app-name':              'Corretor Branco',
+    'page-title-opts':       'Corretor Branco \u2013 词汇列表',
+    'page-title-sandbox':    'Corretor Branco \u2013 测试区域',
+
     'popup-subtitle':        '拼写检查器',
     'popup-status-active':   '已启用',
     'popup-stat-label':      '已加载词对',
