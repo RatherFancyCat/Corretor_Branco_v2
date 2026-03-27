@@ -7,9 +7,9 @@
 const TRANSLATIONS = {
   // ---- Portuguese (Portugal) – default ----
   pt: {
-    'app-name':              'Corretor Branco',
-    'page-title-opts':       'Corretor Branco \u2013 Lista de Palavras',
-    'page-title-sandbox':    'Corretor Branco \u2013 Área de Teste',
+    'extension-name':              'Corretor Branco',
+    'extension-page-title':        'Corretor Branco - Opções',
+    'extension-sandbox-title':     'Corretor Branco - Área de Teste',
 
     'popup-subtitle':        'Corretor Ortográfico',
     'popup-status-active':   'Ativo',
@@ -73,9 +73,9 @@ const TRANSLATIONS = {
 
   // ---- English ----
   en: {
-    'app-name':              'Corretor Branco',
-    'page-title-opts':       'Corretor Branco \u2013 Word List',
-    'page-title-sandbox':    'Corretor Branco \u2013 Test Area',
+    'extension-name':              'White Out Corrector',
+    'extension-page-title':        'White Out Corrector - Options',
+    'extension-sandbox-title':     'White Out Corrector - Test Area',
 
     'popup-subtitle':        'Spell Checker',
     'popup-status-active':   'Active',
@@ -139,9 +139,9 @@ const TRANSLATIONS = {
 
   // ---- Spanish ----
   es: {
-    'app-name':              'Corretor Branco',
-    'page-title-opts':       'Corretor Branco \u2013 Lista de Palabras',
-    'page-title-sandbox':    'Corretor Branco \u2013 Área de Prueba',
+    'extension-name':             'Corrector Blanco',
+    'extension-page-title':       'Corrector Blanco - Opciones',
+    'extension-sandbox-title':    'Corrector Blanco - Área de Prueba',
 
     'popup-subtitle':        'Corrector Ortográfico',
     'popup-status-active':   'Activo',
@@ -205,9 +205,9 @@ const TRANSLATIONS = {
 
   // ---- French ----
   fr: {
-    'app-name':              'Corretor Branco',
-    'page-title-opts':       'Corretor Branco \u2013 Liste de mots',
-    'page-title-sandbox':    'Corretor Branco \u2013 Zone de test',
+    'extension-name':             'Correcteur Blanc',
+    'extension-page-title':       'Correcteur Blanc - Options',
+    'extension-sandbox-title':    'Correcteur Blanc - Zone de test',
 
     'popup-subtitle':        'Correcteur Orthographique',
     'popup-status-active':   'Actif',
@@ -271,9 +271,9 @@ const TRANSLATIONS = {
 
   // ---- German ----
   de: {
-    'app-name':              'Corretor Branco',
-    'page-title-opts':       'Corretor Branco \u2013 Wortliste',
-    'page-title-sandbox':    'Corretor Branco \u2013 Testbereich',
+    'extension-name':             'Weißer Korrektor',
+    'extension-page-title':       'Weißer Korrektor - Optionen',
+    'extension-sandbox-title':    'Weißer Korrektor - Testbereich',
 
     'popup-subtitle':        'Rechtschreibprüfung',
     'popup-status-active':   'Aktiv',
@@ -337,9 +337,9 @@ const TRANSLATIONS = {
 
   // ---- Chinese (Simplified) ----
   zh: {
-    'app-name':              'Corretor Branco',
-    'page-title-opts':       'Corretor Branco \u2013 词汇列表',
-    'page-title-sandbox':    'Corretor Branco \u2013 测试区域',
+    'extension-name':             '白色更正器',
+    'extension-page-title':       '白色更正器 - 选项',
+    'extension-sandbox-title':    '白色更正器 - 测试区域',
 
     'popup-subtitle':        '拼写检查器',
     'popup-status-active':   '已启用',
