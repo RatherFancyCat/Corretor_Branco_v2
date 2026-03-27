@@ -7,6 +7,9 @@
 const TRANSLATIONS = {
   // ---- Portuguese (Portugal) – default ----
   pt: {
+    'extension-name':        'Corretor Branco',
+    'extension-page-title':  'Corretor Branco - Opções',
+
     'popup-subtitle':        'Corretor Ortográfico',
     'popup-status-active':   'Ativo',
     'popup-stat-label':      'pares de palavras carregados',
@@ -69,6 +72,9 @@ const TRANSLATIONS = {
 
   // ---- English ----
   en: {
+    'extension-name':        'White Out Corrector',
+    'extension-page-title':  'White Out Corrector - Options',
+
     'popup-subtitle':        'Spell Checker',
     'popup-status-active':   'Active',
     'popup-stat-label':      'word pairs loaded',
@@ -131,6 +137,8 @@ const TRANSLATIONS = {
 
   // ---- Spanish ----
   es: {
+    'extension-name':       'Corrector Blanco',
+
     'popup-subtitle':        'Corrector Ortográfico',
     'popup-status-active':   'Activo',
     'popup-stat-label':      'pares de palabras cargados',
@@ -193,6 +201,8 @@ const TRANSLATIONS = {
 
   // ---- French ----
   fr: {
+    'extension-name':       'Correcteur Blanc',
+
     'popup-subtitle':        'Correcteur Orthographique',
     'popup-status-active':   'Actif',
     'popup-stat-label':      'paires de mots chargées',
@@ -255,6 +265,8 @@ const TRANSLATIONS = {
 
   // ---- German ----
   de: {
+    'extension-name':       'Weißer Korrektor',
+
     'popup-subtitle':        'Rechtschreibprüfung',
     'popup-status-active':   'Aktiv',
     'popup-stat-label':      'Wortpaare geladen',
@@ -317,6 +329,8 @@ const TRANSLATIONS = {
 
   // ---- Chinese (Simplified) ----
   zh: {
+    'extension-name':       '白色更正器',
+
     'popup-subtitle':        '拼写检查器',
     'popup-status-active':   '已启用',
     'popup-stat-label':      '已加载词对',
