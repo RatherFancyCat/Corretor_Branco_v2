@@ -67,7 +67,7 @@ const ACHIEVEMENT_DEFINITIONS = [
     id: 'corrections-1000',
     name: 'One Thousand',
     desc: 'Have 1,000 words corrected',
-    reward: null,
+    reward: 'xpbar',
     check: (s) => s.correctionsApplied >= 1000,
   },
   {

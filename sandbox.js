@@ -9,6 +9,7 @@ let secretOptions = {
   revealed: false,
   highlightCorrections: false,
   correctionFlair: false,
+  xpBar: false,
 };
 let cbStats = { wordsAdded: 0, correctionsApplied: 0 };
 let cbAchievements = {};
@@ -34,6 +35,7 @@ function loadAll(callback) {
         revealed: false,
         highlightCorrections: false,
         correctionFlair: false,
+        xpBar: false,
       };
       cbStats = data.cbStats || { wordsAdded: 0, correctionsApplied: 0 };
       cbAchievements = data.cbAchievements || {};
@@ -286,6 +288,7 @@ function checkEasterEgg() {
   // Grant all rewards automatically
   secretOptions.highlightCorrections = true;
   secretOptions.correctionFlair = true;
+  secretOptions.xpBar = true;
   secretOptions.revealed = true;
   saveSecretOptions();
 
@@ -382,6 +385,40 @@ function incrementCorrections() {
 }
 
 // ---------------------------------------------------------------------------
+// XP / Level helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute the current level and XP progress from a total XP value.
+ * Required XP to level up from level N = N * 6.
+ * (Total XP to reach level N = 3 * N * (N - 1).)
+ *
+ * @param {number} totalXp
+ * @returns {{ level: number, currentXp: number, requiredXp: number }}
+ */
+function computeLevel(totalXp) {
+  let level = 1;
+  let xpUsed = 0;
+  while (true) {
+    const needed = level * 6;
+    if (xpUsed + needed > totalXp) break;
+    xpUsed += needed;
+    level++;
+  }
+  return { level, currentXp: totalXp - xpUsed, requiredXp: level * 6 };
+}
+
+/** Refresh the XP bar widget to reflect the current cbStats. */
+function updateXpBar() {
+  const fill = document.getElementById('xpBarFill');
+  const levelEl = document.getElementById('xpBarLevel');
+  if (!fill || !levelEl) return;
+  const { level, currentXp, requiredXp } = computeLevel(cbStats.correctionsApplied || 0);
+  fill.style.width = (requiredXp > 0 ? Math.min(100, (currentXp / requiredXp) * 100) : 0) + '%';
+  levelEl.textContent = level;
+}
+
+// ---------------------------------------------------------------------------
 // Achievements
 // ---------------------------------------------------------------------------
 
@@ -407,6 +444,10 @@ function checkAndSaveAchievements() {
         secretOptions.correctionFlair = true;
         secretChanged = true;
         shouldReveal = true;
+      } else if (def.reward === 'xpbar' && !secretOptions.xpBar) {
+        secretOptions.xpBar = true;
+        secretChanged = true;
+        shouldReveal = true;
       }
 
       setTimeout(() => showAchievementToast(def), i * 400);
@@ -422,6 +463,8 @@ function checkAndSaveAchievements() {
       saveSecretOptions();
     }
   }
+  // Always keep the XP bar up to date whenever stats change
+  updateXpBar();
 }
 
 // ---------------------------------------------------------------------------
@@ -461,19 +504,31 @@ function showAchievementToast(def) {
 function updateSecretUI() {
   const optHighlight = document.getElementById('optHighlight');
   const optFlair = document.getElementById('optFlair');
+  const optXpBar = document.getElementById('optXpBar');
   if (!optHighlight) return; // DOM not ready yet
 
   optHighlight.checked = !!secretOptions.highlightCorrections;
   optFlair.checked = !!secretOptions.correctionFlair;
+  if (optXpBar) optXpBar.checked = !!secretOptions.xpBar;
 
   // Show each reward row only if its corresponding achievement has been earned
   const highlightEarned = ACHIEVEMENT_DEFINITIONS.some((d) => d.reward === 'highlight' && cbAchievements[d.id]);
   const flairEarned = ACHIEVEMENT_DEFINITIONS.some((d) => d.reward === 'flair' && cbAchievements[d.id]);
+  const xpBarEarned = ACHIEVEMENT_DEFINITIONS.some((d) => d.reward === 'xpbar' && cbAchievements[d.id]);
 
   const highlightRow = document.getElementById('optHighlightRow');
   const flairRow = document.getElementById('optFlairRow');
+  const xpBarRow = document.getElementById('optXpBarRow');
   if (highlightRow) highlightRow.hidden = !highlightEarned;
   if (flairRow) flairRow.hidden = !flairEarned;
+  if (xpBarRow) xpBarRow.hidden = !xpBarEarned;
+
+  // Show/hide the XP bar widget based on whether the option is enabled
+  const xpBarWidget = document.getElementById('xpBarWidget');
+  const xpBarDesc = document.getElementById('xpBarDesc');
+  if (xpBarWidget) xpBarWidget.hidden = !secretOptions.xpBar;
+  if (xpBarDesc) xpBarDesc.hidden = !!secretOptions.xpBar;
+  if (secretOptions.xpBar) updateXpBar();
 }
 
 // ---------------------------------------------------------------------------
@@ -522,6 +577,15 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('optFlair').addEventListener('change', (e) => {
     secretOptions.correctionFlair = e.target.checked;
     saveSecretOptions();
+  });
+  document.getElementById('optXpBar').addEventListener('change', (e) => {
+    secretOptions.xpBar = e.target.checked;
+    saveSecretOptions();
+    const xpBarWidget = document.getElementById('xpBarWidget');
+    const xpBarDesc = document.getElementById('xpBarDesc');
+    if (xpBarWidget) xpBarWidget.hidden = !secretOptions.xpBar;
+    if (xpBarDesc) xpBarDesc.hidden = !!secretOptions.xpBar;
+    if (secretOptions.xpBar) updateXpBar();
   });
 
   attachGoToOptions();
