@@ -39,7 +39,7 @@ const ACHIEVEMENT_DEFINITIONS = [
     id: 'corrections-10',
     name: 'Double Digits',
     desc: 'Have 10 words corrected',
-    reward: null,
+    reward: 'highlight',
     check: (s) => s.correctionsApplied >= 10,
   },
   {
@@ -53,7 +53,7 @@ const ACHIEVEMENT_DEFINITIONS = [
     id: 'corrections-100',
     name: 'Century',
     desc: 'Have 100 words corrected',
-    reward: null,
+    reward: 'flair',
     check: (s) => s.correctionsApplied >= 100,
   },
   {

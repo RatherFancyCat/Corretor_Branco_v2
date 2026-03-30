@@ -64,14 +64,14 @@
 
     </div>
 
-    <!-- Super Secret Options (revealed by easter egg) -->
+    <!-- Super Secret Options (revealed when achievement rewards are earned) -->
     <section id="secretPanel" class="card secret-panel" hidden>
       <div class="secret-title">
         <span class="secret-icon">🔓</span>
         <h2 data-i18n="secret-panel-title">Super Secret Options</h2>
         <span class="secret-tag" data-i18n="secret-panel-tag">UNLOCKED</span>
       </div>
-      <p class="secret-subtitle" data-i18n="secret-panel-subtitle">You found the easter egg! These options are for the chosen few.</p>
+      <p class="secret-subtitle" data-i18n="secret-panel-subtitle">You unlocked these features through your achievements!</p>
       <div class="secret-opts">
         <label class="secret-opt">
           <input type="checkbox" id="optHighlight">
@@ -87,33 +87,9 @@
             <span data-i18n="secret-opt-flair-desc">Show a sparkle animation whenever a word is corrected</span>
           </div>
         </label>
-        <label class="secret-opt">
-          <input type="checkbox" id="optAchievements">
-          <div>
-            <strong data-i18n="secret-opt-achievements-name">🏆 Achievements</strong>
-            <span data-i18n="secret-opt-achievements-desc">Track and unlock achievements as you use the extension</span>
-          </div>
-        </label>
       </div>
-      <button id="openAchievementsBtn" class="btn btn-primary" hidden data-i18n="secret-btn-view-achievements">
-        🏆 View Achievements
-      </button>
     </section>
 
-  </div>
-
-  <!-- Achievements Modal -->
-  <div id="achievementsModal" class="modal-backdrop" hidden>
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <h2 data-i18n="modal-achievements-h2">🏆 Achievements</h2>
-        <button id="closeAchievementsBtn" class="modal-close">✕</button>
-      </div>
-      <div id="achievementsList" class="achievements-list"></div>
-      <div class="modal-footer">
-        <button id="resetAchievementsBtn" class="btn btn-danger btn-sm" data-i18n="secret-btn-reset-achievements">🗑 Reset Achievements</button>
-      </div>
-    </div>
   </div>
 
   <script src="i18n.js"></script>

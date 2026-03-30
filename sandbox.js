@@ -9,7 +9,6 @@ let secretOptions = {
   revealed: false,
   highlightCorrections: false,
   correctionFlair: false,
-  achievementsEnabled: false,
 };
 let cbStats = { wordsAdded: 0, correctionsApplied: 0 };
 let cbAchievements = {};
@@ -35,7 +34,6 @@ function loadAll(callback) {
         revealed: false,
         highlightCorrections: false,
         correctionFlair: false,
-        achievementsEnabled: false,
       };
       cbStats = data.cbStats || { wordsAdded: 0, correctionsApplied: 0 };
       cbAchievements = data.cbAchievements || {};
@@ -67,11 +65,6 @@ chrome.storage.onChanged.addListener((changes, area) => {
     const log = document.getElementById('correctionLog');
     if (log && log.querySelector('.no-corrections')) {
       log.innerHTML = `<li class="no-corrections">${I18n.t('sandbox-no-corrections')}</li>`;
-    }
-    // Re-render the achievements modal content if it is currently open
-    const modal = document.getElementById('achievementsModal');
-    if (modal && !modal.hidden) {
-      renderAchievements();
     }
   }
   if (changes.cbStats) {
@@ -272,13 +265,36 @@ function attachGoToOptions() {
 const EASTER_EGG_PHRASE = 'ratherfancycat is a cool dude';
 
 function checkEasterEgg() {
-  if (secretOptions.revealed) return;
   const val = document.getElementById('testArea').value.toLowerCase();
-  if (val.includes(EASTER_EGG_PHRASE)) {
-    secretOptions.revealed = true;
-    saveSecretOptions();
-    revealSecretPanel();
-  }
+  if (!val.includes(EASTER_EGG_PHRASE)) return;
+
+  // Only act if at least one achievement is still locked
+  const allAlreadyUnlocked = ACHIEVEMENT_DEFINITIONS.every((d) => cbAchievements[d.id]);
+  if (allAlreadyUnlocked) return;
+
+  // Unlock every achievement at once
+  const now = new Date().toISOString();
+  const newlyUnlocked = [];
+  ACHIEVEMENT_DEFINITIONS.forEach((d) => {
+    if (!cbAchievements[d.id]) {
+      cbAchievements[d.id] = now;
+      newlyUnlocked.push(d);
+    }
+  });
+  chrome.storage.local.set({ cbAchievements });
+
+  // Grant all rewards automatically
+  secretOptions.highlightCorrections = true;
+  secretOptions.correctionFlair = true;
+  secretOptions.revealed = true;
+  saveSecretOptions();
+
+  revealSecretPanel();
+
+  // Show a toast for each newly unlocked achievement, staggered
+  newlyUnlocked.forEach((def, i) => {
+    setTimeout(() => showAchievementToast(def), i * 400);
+  });
 }
 
 function revealSecretPanel() {
@@ -339,49 +355,38 @@ function checkAndSaveAchievements() {
   if (newlyUnlocked.length > 0) {
     cbAchievements = updated;
     chrome.storage.local.set({ cbAchievements: updated });
-    // Show a toast for each newly unlocked achievement, staggered slightly
+
+    let secretChanged = false;
+    let shouldReveal = false;
+
+    // Show a toast and apply any reward for each newly unlocked achievement
     newlyUnlocked.forEach((id, i) => {
       const def = ACHIEVEMENT_DEFINITIONS.find((d) => d.id === id);
-      if (def) setTimeout(() => showAchievementToast(def), i * 400);
+      if (!def) return;
+
+      if (def.reward === 'highlight' && !secretOptions.highlightCorrections) {
+        secretOptions.highlightCorrections = true;
+        secretChanged = true;
+        shouldReveal = true;
+      } else if (def.reward === 'flair' && !secretOptions.correctionFlair) {
+        secretOptions.correctionFlair = true;
+        secretChanged = true;
+        shouldReveal = true;
+      }
+
+      setTimeout(() => showAchievementToast(def), i * 400);
     });
+
+    if (shouldReveal) {
+      secretOptions.revealed = true;
+      secretChanged = true;
+      revealSecretPanel();
+    }
+
+    if (secretChanged) {
+      saveSecretOptions();
+    }
   }
-}
-
-function openAchievementsModal() {
-  // Re-check achievements against latest stats before displaying
-  checkAndSaveAchievements();
-  renderAchievements();
-  document.getElementById('achievementsModal').hidden = false;
-}
-
-function closeAchievementsModal() {
-  document.getElementById('achievementsModal').hidden = true;
-}
-
-function renderAchievements() {
-  const list = document.getElementById('achievementsList');
-  const unlockedCount = ACHIEVEMENT_DEFINITIONS.filter((d) => cbAchievements[d.id]).length;
-
-  let html =
-    `<div class="ach-summary">${I18n.t('ach-summary', { unlocked: unlockedCount, total: ACHIEVEMENT_DEFINITIONS.length })}</div>`;
-
-  for (const def of ACHIEVEMENT_DEFINITIONS) {
-    const unlockedAt = cbAchievements[def.id];
-    const dateStr = unlockedAt ? new Date(unlockedAt).toLocaleString(I18n.locale()) : null;
-
-    html +=
-      `<div class="ach-item ${unlockedAt ? 'ach-unlocked' : 'ach-locked'}">` +
-        `<div class="ach-icon">${unlockedAt ? '🏆' : '🔒'}</div>` +
-        `<div class="ach-info">` +
-          `<strong class="ach-name">${escapeHtml(I18n.t('ach-' + def.id + '-name'))}</strong>` +
-          `<span class="ach-desc">${escapeHtml(I18n.t('ach-' + def.id + '-desc'))}</span>` +
-          `<span class="ach-reward">${I18n.t('ach-reward-label')} ${def.reward ? escapeHtml(def.reward) : I18n.t('ach-reward-none')}</span>` +
-          (dateStr ? `<span class="ach-date">${I18n.t('ach-unlocked-on')} ${escapeHtml(dateStr)}</span>` : '') +
-        `</div>` +
-      `</div>`;
-  }
-
-  list.innerHTML = html;
 }
 
 // ---------------------------------------------------------------------------
@@ -389,8 +394,6 @@ function renderAchievements() {
 // ---------------------------------------------------------------------------
 
 function showAchievementToast(def) {
-  if (!secretOptions.achievementsEnabled) return;
-
   // Stack toasts upward: each new toast sits above existing ones
   const existing = document.querySelectorAll('.ach-toast');
   const bottomOffset = 20 + existing.length * 76; // 76px stride per toast (≈68px height + 8px gap)
@@ -417,33 +420,16 @@ function showAchievementToast(def) {
 }
 
 // ---------------------------------------------------------------------------
-// Reset achievements
-// ---------------------------------------------------------------------------
-
-function resetAchievements() {
-  if (!confirm(I18n.t('confirm-reset-achievements'))) return;
-  cbAchievements = {};
-  cbStats = { wordsAdded: 0, correctionsApplied: 0 };
-  chrome.storage.local.set({ cbAchievements: {}, cbStats: { wordsAdded: 0, correctionsApplied: 0 } }, () => {
-    renderAchievements();
-  });
-}
-
-// ---------------------------------------------------------------------------
 // Secret UI state
 // ---------------------------------------------------------------------------
 
 function updateSecretUI() {
   const optHighlight = document.getElementById('optHighlight');
   const optFlair = document.getElementById('optFlair');
-  const optAchievements = document.getElementById('optAchievements');
-  const openBtn = document.getElementById('openAchievementsBtn');
   if (!optHighlight) return; // DOM not ready yet
 
   optHighlight.checked = !!secretOptions.highlightCorrections;
   optFlair.checked = !!secretOptions.correctionFlair;
-  optAchievements.checked = !!secretOptions.achievementsEnabled;
-  openBtn.hidden = !secretOptions.achievementsEnabled;
 }
 
 // ---------------------------------------------------------------------------
@@ -492,22 +478,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('optFlair').addEventListener('change', (e) => {
     secretOptions.correctionFlair = e.target.checked;
     saveSecretOptions();
-  });
-  document.getElementById('optAchievements').addEventListener('change', (e) => {
-    secretOptions.achievementsEnabled = e.target.checked;
-    saveSecretOptions();
-    document.getElementById('openAchievementsBtn').hidden = !e.target.checked;
-  });
-
-  // Achievements modal
-  document.getElementById('openAchievementsBtn').addEventListener('click', openAchievementsModal);
-  document.getElementById('closeAchievementsBtn').addEventListener('click', closeAchievementsModal);
-  document.getElementById('resetAchievementsBtn').addEventListener('click', resetAchievements);
-  document.getElementById('achievementsModal').addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) closeAchievementsModal();
-  });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeAchievementsModal();
   });
 
   attachGoToOptions();

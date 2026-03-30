@@ -2,15 +2,19 @@
 
 let wordMap = {};
 let settings = { autoCapitalize: false, blacklistedDomains: [] };
+let cbStats = { wordsAdded: 0, correctionsApplied: 0 };
+let cbAchievements = {};
 
 // ---------------------------------------------------------------------------
 // Storage helpers
 // ---------------------------------------------------------------------------
 
 function loadAll(callback) {
-  chrome.storage.local.get(['wordMap', 'settings', 'language'], (data) => {
+  chrome.storage.local.get(['wordMap', 'settings', 'language', 'cbStats', 'cbAchievements'], (data) => {
     wordMap = data.wordMap || {};
     settings = data.settings || { autoCapitalize: false, blacklistedDomains: [] };
+    cbStats = data.cbStats || { wordsAdded: 0, correctionsApplied: 0 };
+    cbAchievements = data.cbAchievements || {};
     const lang = data.language || 'pt';
     I18n._lang = lang;
     if (callback) callback(lang);
@@ -328,6 +332,67 @@ document.getElementById('exportBtn').addEventListener('click', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Achievements
+// ---------------------------------------------------------------------------
+
+function renderAchievements() {
+  const list = document.getElementById('achievementsList');
+  const unlockedCount = ACHIEVEMENT_DEFINITIONS.filter((d) => cbAchievements[d.id]).length;
+
+  let html =
+    `<div class="ach-summary">${I18n.t('ach-summary', { unlocked: unlockedCount, total: ACHIEVEMENT_DEFINITIONS.length })}</div>`;
+
+  for (const def of ACHIEVEMENT_DEFINITIONS) {
+    const unlockedAt = cbAchievements[def.id];
+    const dateStr = unlockedAt ? new Date(unlockedAt).toLocaleString(I18n.locale()) : null;
+    const rewardText = def.reward
+      ? escapeHtml(I18n.t('ach-reward-' + def.reward))
+      : I18n.t('ach-reward-none');
+
+    html +=
+      `<div class="ach-item ${unlockedAt ? 'ach-unlocked' : 'ach-locked'}">` +
+        `<div class="ach-icon">${unlockedAt ? '🏆' : '🔒'}</div>` +
+        `<div class="ach-info">` +
+          `<strong class="ach-name">${escapeHtml(I18n.t('ach-' + def.id + '-name'))}</strong>` +
+          `<span class="ach-desc">${escapeHtml(I18n.t('ach-' + def.id + '-desc'))}</span>` +
+          `<span class="ach-reward">${I18n.t('ach-reward-label')} ${rewardText}</span>` +
+          (dateStr ? `<span class="ach-date">${I18n.t('ach-unlocked-on')} ${escapeHtml(dateStr)}</span>` : '') +
+        `</div>` +
+      `</div>`;
+  }
+
+  list.innerHTML = html;
+}
+
+function openAchievementsModal() {
+  renderAchievements();
+  document.getElementById('achievementsModal').hidden = false;
+}
+
+function closeAchievementsModal() {
+  document.getElementById('achievementsModal').hidden = true;
+}
+
+function resetAchievements() {
+  if (!confirm(I18n.t('confirm-reset-achievements'))) return;
+  cbAchievements = {};
+  cbStats = { wordsAdded: 0, correctionsApplied: 0 };
+  chrome.storage.local.set({ cbAchievements: {}, cbStats: { wordsAdded: 0, correctionsApplied: 0 } }, () => {
+    renderAchievements();
+  });
+}
+
+document.getElementById('viewAchievementsBtn').addEventListener('click', openAchievementsModal);
+document.getElementById('closeAchievementsBtn').addEventListener('click', closeAchievementsModal);
+document.getElementById('resetAchievementsBtn').addEventListener('click', resetAchievements);
+document.getElementById('achievementsModal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeAchievementsModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeAchievementsModal();
+});
+
+// ---------------------------------------------------------------------------
 // Sync language changes made from another page (e.g. popup)
 // ---------------------------------------------------------------------------
 
@@ -338,6 +403,16 @@ chrome.storage.onChanged.addListener((changes, area) => {
     I18n.apply(lang);
     document.getElementById('languageSelect').value = lang;
     renderWordList(document.getElementById('searchInput').value);
+    const modal = document.getElementById('achievementsModal');
+    if (modal && !modal.hidden) renderAchievements();
+  }
+  if (changes.cbAchievements) {
+    cbAchievements = changes.cbAchievements.newValue || {};
+    const modal = document.getElementById('achievementsModal');
+    if (modal && !modal.hidden) renderAchievements();
+  }
+  if (changes.cbStats) {
+    cbStats = changes.cbStats.newValue || { wordsAdded: 0, correctionsApplied: 0 };
   }
 });
 

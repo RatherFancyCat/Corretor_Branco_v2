@@ -127,6 +127,13 @@
       </div>
     </section>
 
+    <!-- Conquistas -->
+    <section class="card">
+      <h2 data-i18n="opts-achievements-h2">Achievements</h2>
+      <p class="setting-desc" data-i18n="opts-achievements-desc">Track and view your correction milestones.</p>
+      <button id="viewAchievementsBtn" class="btn btn-primary" style="margin-top:12px" data-i18n="secret-btn-view-achievements">🏆 View Achievements</button>
+    </section>
+
   </div><!-- /.container -->
 
   <footer class="card">
@@ -138,7 +145,22 @@
     </p>
   </footer>
 
+  <!-- Achievements Modal -->
+  <div id="achievementsModal" class="modal-backdrop" hidden>
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2 data-i18n="modal-achievements-h2">🏆 Achievements</h2>
+        <button id="closeAchievementsBtn" class="modal-close">✕</button>
+      </div>
+      <div id="achievementsList" class="achievements-list"></div>
+      <div class="modal-footer">
+        <button id="resetAchievementsBtn" class="btn btn-danger btn-sm" data-i18n="secret-btn-reset-achievements">🗑 Reset Achievements</button>
+      </div>
+    </div>
+  </div>
+
   <script src="i18n.js"></script>
+  <script src="achievements.js"></script>
   <script src="options.js"></script>
 </body>
 
