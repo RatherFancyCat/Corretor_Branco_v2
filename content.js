@@ -172,10 +172,10 @@ function highlightCorrectedWord(element, wordStart, wordLength) {
     borderRadius: '2px',
     pointerEvents: 'none',
     zIndex: '2147483647',
-    animation: '__cb_word_flash__ 1.5s ease-out forwards',
+    animation: '__cb_word_flash__ 5.5s ease-out forwards',
   });
   document.body.appendChild(hl);
-  setTimeout(() => hl.remove(), 1500);
+  setTimeout(() => hl.remove(), 5500);
 }
 
 /**
@@ -490,11 +490,11 @@ function handleInput(event) {
 
 const SELECTOR = [
   'input:not([type="password"]):not([type="hidden"]):not([type="file"])' +
-    ':not([type="checkbox"]):not([type="radio"]):not([type="submit"])' +
-    ':not([type="button"]):not([type="reset"]):not([type="image"])' +
-    ':not([type="color"]):not([type="range"]):not([type="number"])' +
-    ':not([type="date"]):not([type="time"]):not([type="datetime-local"])' +
-    ':not([type="month"]):not([type="week"]):not([type="email"])',
+  ':not([type="checkbox"]):not([type="radio"]):not([type="submit"])' +
+  ':not([type="button"]):not([type="reset"]):not([type="image"])' +
+  ':not([type="color"]):not([type="range"]):not([type="number"])' +
+  ':not([type="date"]):not([type="time"]):not([type="datetime-local"])' +
+  ':not([type="month"]):not([type="week"]):not([type="email"])',
   'textarea',
   '[contenteditable]:not([contenteditable="false" i])',
 ].join(', ');
