@@ -68,6 +68,11 @@ chrome.storage.onChanged.addListener((changes, area) => {
     if (log && log.querySelector('.no-corrections')) {
       log.innerHTML = `<li class="no-corrections">${I18n.t('sandbox-no-corrections')}</li>`;
     }
+    // Re-render the achievements modal content if it is currently open
+    const modal = document.getElementById('achievementsModal');
+    if (modal && !modal.hidden) {
+      renderAchievements();
+    }
   }
   if (changes.cbStats) {
     cbStats = changes.cbStats.newValue || { wordsAdded: 0, correctionsApplied: 0 };
@@ -201,7 +206,7 @@ function logCorrection(original, corrected) {
   if (placeholder) placeholder.remove();
 
   const li = document.createElement('li');
-  const time = new Date().toLocaleTimeString('pt-PT');
+  const time = new Date().toLocaleTimeString(I18n.locale());
   li.innerHTML =
     `<span class="log-time">${time}</span>` +
     ` <span class="log-original">${escapeHtml(original)}</span>` +
@@ -358,20 +363,20 @@ function renderAchievements() {
   const unlockedCount = ACHIEVEMENT_DEFINITIONS.filter((d) => cbAchievements[d.id]).length;
 
   let html =
-    `<div class="ach-summary">${unlockedCount} / ${ACHIEVEMENT_DEFINITIONS.length} unlocked</div>`;
+    `<div class="ach-summary">${I18n.t('ach-summary', { unlocked: unlockedCount, total: ACHIEVEMENT_DEFINITIONS.length })}</div>`;
 
   for (const def of ACHIEVEMENT_DEFINITIONS) {
     const unlockedAt = cbAchievements[def.id];
-    const dateStr = unlockedAt ? new Date(unlockedAt).toLocaleString() : null;
+    const dateStr = unlockedAt ? new Date(unlockedAt).toLocaleString(I18n.locale()) : null;
 
     html +=
       `<div class="ach-item ${unlockedAt ? 'ach-unlocked' : 'ach-locked'}">` +
         `<div class="ach-icon">${unlockedAt ? '🏆' : '🔒'}</div>` +
         `<div class="ach-info">` +
-          `<strong class="ach-name">${escapeHtml(def.name)}</strong>` +
-          `<span class="ach-desc">${escapeHtml(def.desc)}</span>` +
-          `<span class="ach-reward">Reward: ${def.reward ? escapeHtml(def.reward) : 'None'}</span>` +
-          (dateStr ? `<span class="ach-date">Unlocked: ${escapeHtml(dateStr)}</span>` : '') +
+          `<strong class="ach-name">${escapeHtml(I18n.t('ach-' + def.id + '-name'))}</strong>` +
+          `<span class="ach-desc">${escapeHtml(I18n.t('ach-' + def.id + '-desc'))}</span>` +
+          `<span class="ach-reward">${I18n.t('ach-reward-label')} ${def.reward ? escapeHtml(def.reward) : I18n.t('ach-reward-none')}</span>` +
+          (dateStr ? `<span class="ach-date">${I18n.t('ach-unlocked-on')} ${escapeHtml(dateStr)}</span>` : '') +
         `</div>` +
       `</div>`;
   }
@@ -396,8 +401,8 @@ function showAchievementToast(def) {
   toast.innerHTML =
     `<span class="ach-toast-icon">🏆</span>` +
     `<div class="ach-toast-body">` +
-      `<strong>Achievement Unlocked!</strong>` +
-      `<span title="${escapeHtml(def.name)}">${escapeHtml(def.name)}</span>` +
+      `<strong>${I18n.t('ach-toast-title')}</strong>` +
+      `<span title="${escapeHtml(I18n.t('ach-' + def.id + '-name'))}">${escapeHtml(I18n.t('ach-' + def.id + '-name'))}</span>` +
     `</div>`;
   document.body.appendChild(toast);
 
@@ -416,7 +421,7 @@ function showAchievementToast(def) {
 // ---------------------------------------------------------------------------
 
 function resetAchievements() {
-  if (!confirm('Are you sure you want to reset all achievements and progress? This cannot be undone.')) return;
+  if (!confirm(I18n.t('confirm-reset-achievements'))) return;
   cbAchievements = {};
   cbStats = { wordsAdded: 0, correctionsApplied: 0 };
   chrome.storage.local.set({ cbAchievements: {}, cbStats: { wordsAdded: 0, correctionsApplied: 0 } }, () => {

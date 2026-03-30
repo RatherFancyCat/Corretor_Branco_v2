@@ -15,6 +15,10 @@
  *
  * The check function receives the current global stats object and should
  * return true when the achievement condition has been met.
+ *
+ * NOTE: The `name` and `desc` fields are English reference strings kept for
+ * documentation purposes. The UI reads the displayed text from the i18n keys
+ * `ach-{id}-name` / `ach-{id}-desc` defined in i18n.js.
  */
 const ACHIEVEMENT_DEFINITIONS = [
   {

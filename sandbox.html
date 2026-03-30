@@ -68,34 +68,34 @@
     <section id="secretPanel" class="card secret-panel" hidden>
       <div class="secret-title">
         <span class="secret-icon">🔓</span>
-        <h2>Super Secret Options</h2>
-        <span class="secret-tag">UNLOCKED</span>
+        <h2 data-i18n="secret-panel-title">Super Secret Options</h2>
+        <span class="secret-tag" data-i18n="secret-panel-tag">UNLOCKED</span>
       </div>
-      <p class="secret-subtitle">You found the easter egg! These options are for the chosen few.</p>
+      <p class="secret-subtitle" data-i18n="secret-panel-subtitle">You found the easter egg! These options are for the chosen few.</p>
       <div class="secret-opts">
         <label class="secret-opt">
           <input type="checkbox" id="optHighlight">
           <div>
-            <strong>✨ Word Highlight</strong>
-            <span>Briefly highlight the corrected word for 1.5 seconds</span>
+            <strong data-i18n="secret-opt-highlight-name">✨ Word Highlight</strong>
+            <span data-i18n="secret-opt-highlight-desc">Briefly highlight the corrected word for 1.5 seconds</span>
           </div>
         </label>
         <label class="secret-opt">
           <input type="checkbox" id="optFlair">
           <div>
-            <strong>🎉 Correction Flair</strong>
-            <span>Show a sparkle animation whenever a word is corrected</span>
+            <strong data-i18n="secret-opt-flair-name">🎉 Correction Flair</strong>
+            <span data-i18n="secret-opt-flair-desc">Show a sparkle animation whenever a word is corrected</span>
           </div>
         </label>
         <label class="secret-opt">
           <input type="checkbox" id="optAchievements">
           <div>
-            <strong>🏆 Achievements</strong>
-            <span>Track and unlock achievements as you use the extension</span>
+            <strong data-i18n="secret-opt-achievements-name">🏆 Achievements</strong>
+            <span data-i18n="secret-opt-achievements-desc">Track and unlock achievements as you use the extension</span>
           </div>
         </label>
       </div>
-      <button id="openAchievementsBtn" class="btn btn-primary" hidden>
+      <button id="openAchievementsBtn" class="btn btn-primary" hidden data-i18n="secret-btn-view-achievements">
         🏆 View Achievements
       </button>
     </section>
@@ -106,12 +106,12 @@
   <div id="achievementsModal" class="modal-backdrop" hidden>
     <div class="modal-dialog">
       <div class="modal-header">
-        <h2>🏆 Achievements</h2>
+        <h2 data-i18n="modal-achievements-h2">🏆 Achievements</h2>
         <button id="closeAchievementsBtn" class="modal-close">✕</button>
       </div>
       <div id="achievementsList" class="achievements-list"></div>
       <div class="modal-footer">
-        <button id="resetAchievementsBtn" class="btn btn-danger btn-sm">🗑 Reset Achievements</button>
+        <button id="resetAchievementsBtn" class="btn btn-danger btn-sm" data-i18n="secret-btn-reset-achievements">🗑 Reset Achievements</button>
       </div>
     </div>
   </div>

@@ -69,6 +69,48 @@ const TRANSLATIONS = {
     'sandbox-go-options':    'Adicione palavras na página de opções.',
     'sandbox-th-incorrect':  'Incorreto',
     'sandbox-th-correct':    'Correto',
+
+    // Secret panel
+    'secret-panel-title':           'Super Opções Secretas',
+    'secret-panel-tag':             'DESBLOQUEADO',
+    'secret-panel-subtitle':        'Encontraste o ovo de Páscoa! Estas opções são para os eleitos.',
+    'secret-opt-highlight-name':    '✨ Realce de Palavra',
+    'secret-opt-highlight-desc':    'Realça brevemente a palavra corrigida durante 1,5 segundos',
+    'secret-opt-flair-name':        '🎉 Estilo de Correção',
+    'secret-opt-flair-desc':        'Mostra uma animação de brilho sempre que uma palavra é corrigida',
+    'secret-opt-achievements-name': '🏆 Conquistas',
+    'secret-opt-achievements-desc': 'Acompanha e desbloqueia conquistas à medida que usas a extensão',
+    'secret-btn-view-achievements': '🏆 Ver Conquistas',
+    'modal-achievements-h2':        '🏆 Conquistas',
+    'secret-btn-reset-achievements':'🗑 Repor Conquistas',
+
+    // Achievement modal – runtime strings
+    'ach-summary':                  '{unlocked} / {total} desbloqueadas',
+    'ach-reward-label':             'Recompensa:',
+    'ach-reward-none':              'Nenhuma',
+    'ach-unlocked-on':              'Desbloqueada:',
+    'ach-toast-title':              'Conquista Desbloqueada!',
+    'confirm-reset-achievements':   'Tens a certeza que queres repor todas as conquistas e progresso? Esta ação não pode ser desfeita.',
+
+    // Achievement names and descriptions
+    'ach-first-word-added-name':    'Primeiros Passos',
+    'ach-first-word-added-desc':    'Adiciona a primeira palavra à lista de correções',
+    'ach-corrections-5-name':       'A Começar',
+    'ach-corrections-5-desc':       '5 palavras corrigidas',
+    'ach-corrections-10-name':      'Dois Dígitos',
+    'ach-corrections-10-desc':      '10 palavras corrigidas',
+    'ach-corrections-50-name':      'Cinquenta Correções',
+    'ach-corrections-50-desc':      '50 palavras corrigidas',
+    'ach-corrections-100-name':     'Centena',
+    'ach-corrections-100-desc':     '100 palavras corrigidas',
+    'ach-corrections-500-name':     'Meio Milhar',
+    'ach-corrections-500-desc':     '500 palavras corrigidas',
+    'ach-corrections-1000-name':    'Um Milhar',
+    'ach-corrections-1000-desc':    '1.000 palavras corrigidas',
+    'ach-corrections-5000-name':    'Cinco Mil',
+    'ach-corrections-5000-desc':    '5.000 palavras corrigidas',
+    'ach-corrections-10000-name':   'Dez Mil',
+    'ach-corrections-10000-desc':   '10.000 palavras corrigidas',
   },
 
   // ---- English ----
@@ -135,9 +177,49 @@ const TRANSLATIONS = {
     'sandbox-go-options':    'Add words on the options page.',
     'sandbox-th-incorrect':  'Incorrect',
     'sandbox-th-correct':    'Correct',
-  },
 
-  // ---- Spanish ----
+    // Secret panel
+    'secret-panel-title':           'Super Secret Options',
+    'secret-panel-tag':             'UNLOCKED',
+    'secret-panel-subtitle':        'You found the easter egg! These options are for the chosen few.',
+    'secret-opt-highlight-name':    '✨ Word Highlight',
+    'secret-opt-highlight-desc':    'Briefly highlight the corrected word for 1.5 seconds',
+    'secret-opt-flair-name':        '🎉 Correction Flair',
+    'secret-opt-flair-desc':        'Show a sparkle animation whenever a word is corrected',
+    'secret-opt-achievements-name': '🏆 Achievements',
+    'secret-opt-achievements-desc': 'Track and unlock achievements as you use the extension',
+    'secret-btn-view-achievements': '🏆 View Achievements',
+    'modal-achievements-h2':        '🏆 Achievements',
+    'secret-btn-reset-achievements':'🗑 Reset Achievements',
+
+    // Achievement modal – runtime strings
+    'ach-summary':                  '{unlocked} / {total} unlocked',
+    'ach-reward-label':             'Reward:',
+    'ach-reward-none':              'None',
+    'ach-unlocked-on':              'Unlocked:',
+    'ach-toast-title':              'Achievement Unlocked!',
+    'confirm-reset-achievements':   'Are you sure you want to reset all achievements and progress? This cannot be undone.',
+
+    // Achievement names and descriptions
+    'ach-first-word-added-name':    'First Steps',
+    'ach-first-word-added-desc':    'Add your first word to the correction list',
+    'ach-corrections-5-name':       'Getting Started',
+    'ach-corrections-5-desc':       'Have 5 words corrected',
+    'ach-corrections-10-name':      'Double Digits',
+    'ach-corrections-10-desc':      'Have 10 words corrected',
+    'ach-corrections-50-name':      'Fifty Fixes',
+    'ach-corrections-50-desc':      'Have 50 words corrected',
+    'ach-corrections-100-name':     'Century',
+    'ach-corrections-100-desc':     'Have 100 words corrected',
+    'ach-corrections-500-name':     'Half Thousand',
+    'ach-corrections-500-desc':     'Have 500 words corrected',
+    'ach-corrections-1000-name':    'One Thousand',
+    'ach-corrections-1000-desc':    'Have 1,000 words corrected',
+    'ach-corrections-5000-name':    'Five Thousand',
+    'ach-corrections-5000-desc':    'Have 5,000 words corrected',
+    'ach-corrections-10000-name':   'Ten Thousand',
+    'ach-corrections-10000-desc':   'Have 10,000 words corrected',
+  },
   es: {
     'extension-name':             'Corrector Blanco',
     'extension-page-title':       'Corrector Blanco - Opciones',
@@ -201,6 +283,48 @@ const TRANSLATIONS = {
     'sandbox-go-options':    'Añada palabras en la página de opciones.',
     'sandbox-th-incorrect':  'Incorrecto',
     'sandbox-th-correct':    'Correcto',
+
+    // Secret panel
+    'secret-panel-title':           'Súper Opciones Secretas',
+    'secret-panel-tag':             'DESBLOQUEADO',
+    'secret-panel-subtitle':        '¡Encontraste el huevo de Pascua! Estas opciones son para los elegidos.',
+    'secret-opt-highlight-name':    '✨ Resaltado de Palabra',
+    'secret-opt-highlight-desc':    'Resalta brevemente la palabra corregida durante 1,5 segundos',
+    'secret-opt-flair-name':        '🎉 Estilo de Corrección',
+    'secret-opt-flair-desc':        'Muestra una animación de brillo cada vez que se corrige una palabra',
+    'secret-opt-achievements-name': '🏆 Logros',
+    'secret-opt-achievements-desc': 'Rastrea y desbloquea logros mientras usas la extensión',
+    'secret-btn-view-achievements': '🏆 Ver Logros',
+    'modal-achievements-h2':        '🏆 Logros',
+    'secret-btn-reset-achievements':'🗑 Restablecer Logros',
+
+    // Achievement modal – runtime strings
+    'ach-summary':                  '{unlocked} / {total} desbloqueados',
+    'ach-reward-label':             'Recompensa:',
+    'ach-reward-none':              'Ninguna',
+    'ach-unlocked-on':              'Desbloqueado:',
+    'ach-toast-title':              '¡Logro Desbloqueado!',
+    'confirm-reset-achievements':   '¿Estás seguro de que quieres restablecer todos los logros y el progreso? Esta acción no se puede deshacer.',
+
+    // Achievement names and descriptions
+    'ach-first-word-added-name':    'Primeros Pasos',
+    'ach-first-word-added-desc':    'Añade tu primera palabra a la lista de correcciones',
+    'ach-corrections-5-name':       'Empezando',
+    'ach-corrections-5-desc':       '5 palabras corregidas',
+    'ach-corrections-10-name':      'Dos Dígitos',
+    'ach-corrections-10-desc':      '10 palabras corregidas',
+    'ach-corrections-50-name':      'Cincuenta Correcciones',
+    'ach-corrections-50-desc':      '50 palabras corregidas',
+    'ach-corrections-100-name':     'Centenario',
+    'ach-corrections-100-desc':     '100 palabras corregidas',
+    'ach-corrections-500-name':     'Medio Millar',
+    'ach-corrections-500-desc':     '500 palabras corregidas',
+    'ach-corrections-1000-name':    'Mil',
+    'ach-corrections-1000-desc':    '1.000 palabras corregidas',
+    'ach-corrections-5000-name':    'Cinco Mil',
+    'ach-corrections-5000-desc':    '5.000 palabras corregidas',
+    'ach-corrections-10000-name':   'Diez Mil',
+    'ach-corrections-10000-desc':   '10.000 palabras corregidas',
   },
 
   // ---- French ----
@@ -267,9 +391,49 @@ const TRANSLATIONS = {
     'sandbox-go-options':    'Ajoutez des mots sur la page des options.',
     'sandbox-th-incorrect':  'Incorrect',
     'sandbox-th-correct':    'Correct',
-  },
 
-  // ---- German ----
+    // Secret panel
+    'secret-panel-title':           'Options Super Secrètes',
+    'secret-panel-tag':             'DÉBLOQUÉ',
+    'secret-panel-subtitle':        "Vous avez trouvé l'œuf de Pâques\u00A0! Ces options sont réservées aux élus.",
+    'secret-opt-highlight-name':    '✨ Mise en surbrillance',
+    'secret-opt-highlight-desc':    'Met brièvement en surbrillance le mot corrigé pendant 1,5\u00A0seconde',
+    'secret-opt-flair-name':        '🎉 Animation de correction',
+    'secret-opt-flair-desc':        "Affiche une animation de scintillement à chaque correction",
+    'secret-opt-achievements-name': '🏆 Succès',
+    'secret-opt-achievements-desc': "Suivez et débloquez des succès en utilisant l'extension",
+    'secret-btn-view-achievements': '🏆 Voir les succès',
+    'modal-achievements-h2':        '🏆 Succès',
+    'secret-btn-reset-achievements':'🗑 Réinitialiser les succès',
+
+    // Achievement modal – runtime strings
+    'ach-summary':                  '{unlocked} / {total} débloqués',
+    'ach-reward-label':             'Récompense\u00A0:',
+    'ach-reward-none':              'Aucune',
+    'ach-unlocked-on':              'Débloqué\u00A0:',
+    'ach-toast-title':              'Succès débloqué\u00A0!',
+    'confirm-reset-achievements':   'Êtes-vous sûr de vouloir réinitialiser tous les succès et la progression\u00A0? Cette action est irréversible.',
+
+    // Achievement names and descriptions
+    'ach-first-word-added-name':    'Premiers pas',
+    'ach-first-word-added-desc':    'Ajoutez votre premier mot à la liste de corrections',
+    'ach-corrections-5-name':       'Pour commencer',
+    'ach-corrections-5-desc':       '5 mots corrigés',
+    'ach-corrections-10-name':      'Double chiffre',
+    'ach-corrections-10-desc':      '10 mots corrigés',
+    'ach-corrections-50-name':      'Cinquante corrections',
+    'ach-corrections-50-desc':      '50 mots corrigés',
+    'ach-corrections-100-name':     'Centenaire',
+    'ach-corrections-100-desc':     '100 mots corrigés',
+    'ach-corrections-500-name':     'Demi-millier',
+    'ach-corrections-500-desc':     '500 mots corrigés',
+    'ach-corrections-1000-name':    'Mille',
+    'ach-corrections-1000-desc':    '1\u202F000 mots corrigés',
+    'ach-corrections-5000-name':    'Cinq mille',
+    'ach-corrections-5000-desc':    '5\u202F000 mots corrigés',
+    'ach-corrections-10000-name':   'Dix mille',
+    'ach-corrections-10000-desc':   '10\u202F000 mots corrigés',
+  },
   de: {
     'extension-name':             'Weißer Korrektor',
     'extension-page-title':       'Weißer Korrektor - Optionen',
@@ -333,6 +497,48 @@ const TRANSLATIONS = {
     'sandbox-go-options':    'Fügen Sie Wörter auf der Optionsseite hinzu.',
     'sandbox-th-incorrect':  'Falsch',
     'sandbox-th-correct':    'Richtig',
+
+    // Secret panel
+    'secret-panel-title':           'Super-Geheimoptionen',
+    'secret-panel-tag':             'FREIGESCHALTET',
+    'secret-panel-subtitle':        'Du hast das Easter Egg gefunden! Diese Optionen sind nur für Auserwählte.',
+    'secret-opt-highlight-name':    '✨ Wortmarkierung',
+    'secret-opt-highlight-desc':    'Hebt das korrigierte Wort kurz für 1,5 Sekunden hervor',
+    'secret-opt-flair-name':        '🎉 Korrektur-Effekt',
+    'secret-opt-flair-desc':        'Zeigt eine Glitzeranimation, wenn ein Wort korrigiert wird',
+    'secret-opt-achievements-name': '🏆 Erfolge',
+    'secret-opt-achievements-desc': 'Verfolge und schalte Erfolge frei, während du die Erweiterung verwendest',
+    'secret-btn-view-achievements': '🏆 Erfolge anzeigen',
+    'modal-achievements-h2':        '🏆 Erfolge',
+    'secret-btn-reset-achievements':'🗑 Erfolge zurücksetzen',
+
+    // Achievement modal – runtime strings
+    'ach-summary':                  '{unlocked} / {total} freigeschaltet',
+    'ach-reward-label':             'Belohnung:',
+    'ach-reward-none':              'Keine',
+    'ach-unlocked-on':              'Freigeschaltet:',
+    'ach-toast-title':              'Erfolg freigeschaltet!',
+    'confirm-reset-achievements':   'Bist du sicher, dass du alle Erfolge und Fortschritte zurücksetzen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.',
+
+    // Achievement names and descriptions
+    'ach-first-word-added-name':    'Erste Schritte',
+    'ach-first-word-added-desc':    'Füge dein erstes Wort zur Korrektionsliste hinzu',
+    'ach-corrections-5-name':       'Erste Korrekturen',
+    'ach-corrections-5-desc':       '5 Wörter korrigiert',
+    'ach-corrections-10-name':      'Zweistellig',
+    'ach-corrections-10-desc':      '10 Wörter korrigiert',
+    'ach-corrections-50-name':      'Fünfzig Korrekturen',
+    'ach-corrections-50-desc':      '50 Wörter korrigiert',
+    'ach-corrections-100-name':     'Hundert',
+    'ach-corrections-100-desc':     '100 Wörter korrigiert',
+    'ach-corrections-500-name':     'Halbtausend',
+    'ach-corrections-500-desc':     '500 Wörter korrigiert',
+    'ach-corrections-1000-name':    'Tausend',
+    'ach-corrections-1000-desc':    '1.000 Wörter korrigiert',
+    'ach-corrections-5000-name':    'Fünftausend',
+    'ach-corrections-5000-desc':    '5.000 Wörter korrigiert',
+    'ach-corrections-10000-name':   'Zehntausend',
+    'ach-corrections-10000-desc':   '10.000 Wörter korrigiert',
   },
 
   // ---- Chinese (Simplified) ----
@@ -399,6 +605,48 @@ const TRANSLATIONS = {
     'sandbox-go-options':    '请在选项页面添加词汇。',
     'sandbox-th-incorrect':  '错误',
     'sandbox-th-correct':    '正确',
+
+    // Secret panel
+    'secret-panel-title':           '超级秘密选项',
+    'secret-panel-tag':             '已解锁',
+    'secret-panel-subtitle':        '你找到了彩蛋！这些选项专为少数人准备。',
+    'secret-opt-highlight-name':    '✨ 单词高亮',
+    'secret-opt-highlight-desc':    '短暂高亮已更正的单词，持续1.5秒',
+    'secret-opt-flair-name':        '🎉 更正特效',
+    'secret-opt-flair-desc':        '每当单词被更正时显示闪光动画',
+    'secret-opt-achievements-name': '🏆 成就',
+    'secret-opt-achievements-desc': '使用扩展程序时追踪并解锁成就',
+    'secret-btn-view-achievements': '🏆 查看成就',
+    'modal-achievements-h2':        '🏆 成就',
+    'secret-btn-reset-achievements':'🗑 重置成就',
+
+    // Achievement modal – runtime strings
+    'ach-summary':                  '{unlocked} / {total} 已解锁',
+    'ach-reward-label':             '奖励：',
+    'ach-reward-none':              '无',
+    'ach-unlocked-on':              '解锁时间：',
+    'ach-toast-title':              '成就已解锁！',
+    'confirm-reset-achievements':   '您确定要重置所有成就和进度吗？此操作无法撤消。',
+
+    // Achievement names and descriptions
+    'ach-first-word-added-name':    '第一步',
+    'ach-first-word-added-desc':    '将您的第一个单词添加到更正列表',
+    'ach-corrections-5-name':       '初步上手',
+    'ach-corrections-5-desc':       '更正5个单词',
+    'ach-corrections-10-name':      '两位数',
+    'ach-corrections-10-desc':      '更正10个单词',
+    'ach-corrections-50-name':      '五十次更正',
+    'ach-corrections-50-desc':      '更正50个单词',
+    'ach-corrections-100-name':     '百次',
+    'ach-corrections-100-desc':     '更正100个单词',
+    'ach-corrections-500-name':     '五百次',
+    'ach-corrections-500-desc':     '更正500个单词',
+    'ach-corrections-1000-name':    '一千次',
+    'ach-corrections-1000-desc':    '更正1,000个单词',
+    'ach-corrections-5000-name':    '五千次',
+    'ach-corrections-5000-desc':    '更正5,000个单词',
+    'ach-corrections-10000-name':   '一万次',
+    'ach-corrections-10000-desc':   '更正10,000个单词',
   },
 };
 
@@ -410,6 +658,17 @@ const LANG_HTML_CODES = {
   fr: 'fr',
   de: 'de',
   zh: 'zh-Hans',
+};
+
+// Mapping of extension language codes to full BCP-47 locale strings for
+// Intl / toLocaleString / toLocaleTimeString APIs.
+const LANG_LOCALE_CODES = {
+  pt: 'pt-PT',
+  en: 'en-US',
+  es: 'es-ES',
+  fr: 'fr-FR',
+  de: 'de-DE',
+  zh: 'zh-CN',
 };
 
 // ---------------------------------------------------------------------------
@@ -454,5 +713,10 @@ const I18n = {
       this._lang = data.language || 'pt';
       if (callback) callback(this._lang);
     });
+  },
+
+  /** Returns the full BCP-47 locale string for the current language (e.g. 'pt-PT', 'en-US'). */
+  locale() {
+    return LANG_LOCALE_CODES[this._lang] || this._lang;
   },
 };
