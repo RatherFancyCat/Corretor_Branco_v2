@@ -12,6 +12,10 @@ let applying = false;
 const FLAIR_OPTIONS = ['✨', '🎉', '⭐', '💫', '✅'];
 let secretOptions = { revealed: false, highlightCorrections: false, correctionFlair: false };
 
+// Flag to suppress auto-capitalisation for the current sentence.
+// Set by the user's keybind; cleared on the next sentence-ending character.
+let skipCapForThisSentence = false;
+
 // Characters that mark the end of a word
 // PUNCT_CLASS is the non-whitespace subset; SEPARATOR_RE also includes \s.
 const PUNCT_CLASS = ".,!?;:'\"()\\[\\]{}\\-\\/\\\\«»\u201C\u201D\u2018\u2019";
@@ -29,6 +33,30 @@ const SENTENCE_END_RE = /[.!?]/;
 // ---------------------------------------------------------------------------
 // Storage
 // ---------------------------------------------------------------------------
+
+/**
+ * Returns true when a KeyboardEvent matches a stored keybind string
+ * like "Alt+K", "Ctrl+Shift+F", etc.
+ */
+function matchesKeybind(event, keybindStr) {
+  if (!keybindStr) return false;
+  const parts = keybindStr.split('+');
+  const mainKey = parts[parts.length - 1];
+  const needsAlt   = parts.includes('Alt');
+  const needsCtrl  = parts.includes('Ctrl');
+  const needsShift = parts.includes('Shift');
+  const needsMeta  = parts.includes('Meta');
+  // Normalise single characters to upper-case for case-insensitive comparison
+  const eventKey = event.key.length === 1 ? event.key.toUpperCase() : event.key;
+  const bindKey  = mainKey.length === 1  ? mainKey.toUpperCase()  : mainKey;
+  return (
+    eventKey === bindKey &&
+    event.altKey   === needsAlt   &&
+    event.ctrlKey  === needsCtrl  &&
+    event.shiftKey === needsShift &&
+    event.metaKey  === needsMeta
+  );
+}
 
 function checkDomainBlock() {
   const hostname = window.location.hostname;
@@ -55,6 +83,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (changes.enabled !== undefined) enabled = changes.enabled.newValue !== false;
   if (changes.settings) {
     settings = changes.settings.newValue || { autoCapitalize: false, blacklistedDomains: [] };
+    if (!settings.autoCapitalize || !settings.skipCapEnabled) {
+      skipCapForThisSentence = false;
+    }
     checkDomainBlock();
   }
   if (changes.language) currentLang = changes.language.newValue || 'pt';
@@ -62,6 +93,17 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 loadSettings();
+
+// Listen for the skip-capitalisation keybind on the document.
+// Uses capture so it fires even when a text field has focus.
+document.addEventListener('keydown', (e) => {
+  if (!enabled || blockedByDomain) return;
+  if (!settings.autoCapitalize || !settings.skipCapEnabled) return;
+  if (matchesKeybind(e, settings.skipCapKey || 'Alt+K')) {
+    skipCapForThisSentence = true;
+    e.preventDefault();
+  }
+}, true);
 
 // ---------------------------------------------------------------------------
 // Stats tracking (for achievements)
@@ -390,6 +432,7 @@ function isAtSentenceStart(textBefore) {
  * Only fires when a single lowercase letter was inserted (event.inputType === 'insertText').
  */
 function autoCapitalizeInput(element, event) {
+  if (skipCapForThisSentence) return;
   if (!event || event.inputType !== 'insertText') return;
   const typedChar = event.data;
   if (!typedChar || typedChar.length !== 1) return;
@@ -418,6 +461,7 @@ function autoCapitalizeInput(element, event) {
  * Capitalise the just-typed letter in a contenteditable element.
  */
 function autoCapitalizeContentEditable(element, event) {
+  if (skipCapForThisSentence) return;
   if (!event || event.inputType !== 'insertText') return;
   const typedChar = event.data;
   if (!typedChar || typedChar.length !== 1) return;
@@ -476,6 +520,19 @@ function handleInput(event) {
 
   // Auto-capitalise (triggers on alphabetic letter at sentence start)
   if (settings.autoCapitalize) {
+    // Reset skip flag when a sentence-ending character (or newline) is typed
+    if (skipCapForThisSentence && settings.skipCapEnabled) {
+      const typedChar = event.data;
+      const inputType = event.inputType;
+      if (
+        (typedChar && (SENTENCE_END_RE.test(typedChar) || typedChar === '\n')) ||
+        inputType === 'insertParagraph' ||
+        inputType === 'insertLineBreak'
+      ) {
+        skipCapForThisSentence = false;
+      }
+    }
+
     if (isTextInput) {
       autoCapitalizeInput(el, event);
     } else if (el.isContentEditable) {

@@ -195,6 +195,57 @@ header p  { font-size: 13px; opacity: 0.85; margin-top: 2px; }
   box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.18);
 }
 
+/* ---- Sub-setting section (indented, appears under parent checkbox) ---- */
+.sub-setting-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-left: 28px;
+  padding: 14px 16px;
+  border-left: 2px solid #dce8f9;
+  border-radius: 0 4px 4px 0;
+  background: #f8faff;
+}
+
+/* ---- Keybind row ---- */
+.keybind-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.keybind-label {
+  flex-shrink: 0;
+  color: #555;
+}
+
+.keybind-widget {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.keybind-input {
+  width: 120px;
+  padding: 5px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: monospace;
+  background: #fff;
+  cursor: default;
+  outline: none;
+  text-align: center;
+  color: #333;
+}
+
+.keybind-input.recording {
+  border-color: #4A90D9;
+  background: #e8f0fe;
+  color: #4A90D9;
+}
+
 /* ---- Table header ---- */
 .table-header {
   display: flex;
@@ -387,6 +438,25 @@ html[data-theme="dark"] .domain-textarea {
 html[data-theme="dark"] .domain-textarea:focus {
   border-color: #4A90D9;
   box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.25);
+}
+
+html[data-theme="dark"] .sub-setting-section {
+  background: #1a2535;
+  border-left-color: #2a4065;
+}
+
+html[data-theme="dark"] .keybind-label { color: #9ca3af; }
+
+html[data-theme="dark"] .keybind-input {
+  background: #111827;
+  border-color: #374151;
+  color: #f3f4f6;
+}
+
+html[data-theme="dark"] .keybind-input.recording {
+  background: #1e3a5f;
+  border-color: #4A90D9;
+  color: #60a5fa;
 }
 
 html[data-theme="dark"] .modal-dialog { background: #1f2937; }

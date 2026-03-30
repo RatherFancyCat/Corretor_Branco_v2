@@ -51,6 +51,24 @@
           </div>
         </label>
 
+        <!-- Sub-option: skip-capitalisation keybind (visible only when auto-cap is on) -->
+        <div id="skipCapSection" class="sub-setting-section" hidden>
+          <label class="setting-item">
+            <input type="checkbox" id="skipCapEnabledChk">
+            <div class="setting-text">
+              <span class="setting-label" data-i18n="opts-skipcap-label">Suspender capitalização até ao próximo fim de frase</span>
+              <span class="setting-desc" data-i18n="opts-skipcap-desc">Prima o atalho configurado para ignorar a capitalização automática na frase atual.</span>
+            </div>
+          </label>
+          <div id="skipCapKeyRow" class="keybind-row" hidden>
+            <span class="setting-label keybind-label" data-i18n="opts-skipcap-keybind-label">Atalho de teclado</span>
+            <div class="keybind-widget">
+              <input type="text" id="skipCapKeyInput" class="keybind-input" readonly value="Alt+K">
+              <button id="skipCapRecordBtn" class="btn btn-sm btn-secondary" data-i18n="opts-skipcap-record-btn">Definir</button>
+            </div>
+          </div>
+        </div>
+
         <div class="setting-item setting-item--block">
           <label class="setting-label" for="blacklistDomains" data-i18n="opts-blacklist-label">Lista negra de
             domínios</label>

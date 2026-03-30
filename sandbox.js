@@ -4,6 +4,9 @@ let wordMap = {};
 let settings = { autoCapitalize: false, blacklistedDomains: [] };
 let applying = false;
 
+// Flag to suppress auto-capitalisation for the current sentence (mirrors content.js)
+let skipCapForThisSentence = false;
+
 // Secret options state
 let secretOptions = {
   revealed: false,
@@ -25,6 +28,29 @@ const FLAIR_OPTIONS = ['✨', '🎉', '⭐', '💫', '✅'];
 // ---------------------------------------------------------------------------
 // Storage
 // ---------------------------------------------------------------------------
+
+/**
+ * Returns true when a KeyboardEvent matches a stored keybind string
+ * like "Alt+K", "Ctrl+Shift+F", etc.
+ */
+function matchesKeybind(event, keybindStr) {
+  if (!keybindStr) return false;
+  const parts = keybindStr.split('+');
+  const mainKey = parts[parts.length - 1];
+  const needsAlt   = parts.includes('Alt');
+  const needsCtrl  = parts.includes('Ctrl');
+  const needsShift = parts.includes('Shift');
+  const needsMeta  = parts.includes('Meta');
+  const eventKey = event.key.length === 1 ? event.key.toUpperCase() : event.key;
+  const bindKey  = mainKey.length === 1  ? mainKey.toUpperCase()  : mainKey;
+  return (
+    eventKey === bindKey &&
+    event.altKey   === needsAlt   &&
+    event.ctrlKey  === needsCtrl  &&
+    event.shiftKey === needsShift &&
+    event.metaKey  === needsMeta
+  );
+}
 
 function loadAll(callback) {
   chrome.storage.local.get(
@@ -67,6 +93,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
   if (changes.settings) {
     settings = changes.settings.newValue || { autoCapitalize: false, blacklistedDomains: [] };
+    if (!settings.autoCapitalize || !settings.skipCapEnabled) {
+      skipCapForThisSentence = false;
+    }
   }
   if (changes.language) {
     const lang = changes.language.newValue || 'pt';
@@ -173,6 +202,7 @@ function isAtSentenceStart(textBefore) {
 }
 
 function autoCapitalizeTextarea(element, event) {
+  if (skipCapForThisSentence) return;
   if (!event || event.inputType !== 'insertText') return;
   const typedChar = event.data;
   if (!typedChar || typedChar.length !== 1) return;
@@ -570,10 +600,34 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   const testArea = document.getElementById('testArea');
+
+  // Skip-cap keybind listener on the test area
+  testArea.addEventListener('keydown', (e) => {
+    if (!settings.autoCapitalize || !settings.skipCapEnabled) return;
+    if (matchesKeybind(e, settings.skipCapKey || 'Alt+K')) {
+      skipCapForThisSentence = true;
+      e.preventDefault();
+    }
+  });
+
   testArea.addEventListener('input', (event) => {
     if (applying) return;
     if (Object.keys(wordMap).length > 0) correctTextarea(testArea);
-    if (settings.autoCapitalize) autoCapitalizeTextarea(testArea, event);
+    if (settings.autoCapitalize) {
+      // Reset skip flag when a sentence-ending character or newline is typed
+      if (skipCapForThisSentence && settings.skipCapEnabled) {
+        const typedChar = event.data;
+        const inputType = event.inputType;
+        if (
+          (typedChar && (SENTENCE_END_RE.test(typedChar) || typedChar === '\n')) ||
+          inputType === 'insertParagraph' ||
+          inputType === 'insertLineBreak'
+        ) {
+          skipCapForThisSentence = false;
+        }
+      }
+      autoCapitalizeTextarea(testArea, event);
+    }
     checkEasterEgg();
   });
 

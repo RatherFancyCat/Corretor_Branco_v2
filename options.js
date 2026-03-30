@@ -90,9 +90,17 @@ function renderWordList(filter) {
 }
 
 function populateSettings() {
-  document.getElementById('autoCapitalizeChk').checked = settings.autoCapitalize;
+  const autoCapOn = settings.autoCapitalize;
+  document.getElementById('autoCapitalizeChk').checked = autoCapOn;
   document.getElementById('blacklistDomains').value =
     (settings.blacklistedDomains || []).join('\n');
+
+  // Sub-option: skip-capitalisation keybind
+  document.getElementById('skipCapSection').hidden = !autoCapOn;
+  const skipEnabled = !!settings.skipCapEnabled;
+  document.getElementById('skipCapEnabledChk').checked = skipEnabled;
+  document.getElementById('skipCapKeyRow').hidden = !skipEnabled;
+  document.getElementById('skipCapKeyInput').value = settings.skipCapKey || 'Alt+K';
 }
 
 // ---------------------------------------------------------------------------
@@ -236,12 +244,59 @@ document.getElementById('clearAllBtn').addEventListener('click', () => {
 
 document.getElementById('autoCapitalizeChk').addEventListener('change', (e) => {
   settings.autoCapitalize = e.target.checked;
+  document.getElementById('skipCapSection').hidden = !e.target.checked;
+  if (!e.target.checked) {
+    // Disable skip-cap when auto-cap is turned off
+    settings.skipCapEnabled = false;
+    document.getElementById('skipCapEnabledChk').checked = false;
+    document.getElementById('skipCapKeyRow').hidden = true;
+  }
   saveSettings();
 });
 
 // ---------------------------------------------------------------------------
-// Event: Settings – blacklist save
+// Event: Settings – skip-capitalisation keybind
 // ---------------------------------------------------------------------------
+
+document.getElementById('skipCapEnabledChk').addEventListener('change', (e) => {
+  settings.skipCapEnabled = e.target.checked;
+  document.getElementById('skipCapKeyRow').hidden = !e.target.checked;
+  saveSettings();
+});
+
+/**
+ * Format a KeyboardEvent into a human-readable keybind string like "Alt+K".
+ * Returns null when only modifier keys are pressed (no main key yet).
+ */
+function formatKeybind(event) {
+  const parts = [];
+  if (event.ctrlKey)  parts.push('Ctrl');
+  if (event.altKey)   parts.push('Alt');
+  if (event.shiftKey) parts.push('Shift');
+  if (event.metaKey)  parts.push('Meta');
+  const key = event.key;
+  if (['Control', 'Alt', 'Shift', 'Meta'].includes(key)) return null;
+  parts.push(key.length === 1 ? key.toUpperCase() : key);
+  return parts.join('+');
+}
+
+let recording = false;
+
+document.getElementById('skipCapRecordBtn').addEventListener('click', () => {
+  recording = !recording;
+  const btn = document.getElementById('skipCapRecordBtn');
+  const input = document.getElementById('skipCapKeyInput');
+  if (recording) {
+    btn.textContent = I18n.t('opts-skipcap-recording');
+    input.value = '…';
+    input.classList.add('recording');
+  } else {
+    // Cancel recording
+    btn.textContent = I18n.t('opts-skipcap-record-btn');
+    input.value = settings.skipCapKey || 'Alt+K';
+    input.classList.remove('recording');
+  }
+});
 
 document.getElementById('saveBlacklistBtn').addEventListener('click', () => {
   const raw = document.getElementById('blacklistDomains').value;
@@ -403,6 +458,28 @@ document.getElementById('achievementsModal').addEventListener('click', (e) => {
   if (e.target === e.currentTarget) closeAchievementsModal();
 });
 document.addEventListener('keydown', (e) => {
+  // While recording a new keybind, intercept all key events
+  if (recording) {
+    e.preventDefault();
+    if (e.key === 'Escape') {
+      // Cancel recording
+      recording = false;
+      document.getElementById('skipCapRecordBtn').textContent = I18n.t('opts-skipcap-record-btn');
+      document.getElementById('skipCapKeyInput').value = settings.skipCapKey || 'Alt+K';
+      document.getElementById('skipCapKeyInput').classList.remove('recording');
+    } else {
+      const formatted = formatKeybind(e);
+      if (formatted) {
+        settings.skipCapKey = formatted;
+        document.getElementById('skipCapKeyInput').value = formatted;
+        recording = false;
+        document.getElementById('skipCapRecordBtn').textContent = I18n.t('opts-skipcap-record-btn');
+        document.getElementById('skipCapKeyInput').classList.remove('recording');
+        saveSettings();
+      }
+    }
+    return;
+  }
   if (e.key === 'Escape') closeAchievementsModal();
 });
 
