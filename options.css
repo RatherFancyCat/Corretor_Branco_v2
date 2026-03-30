@@ -286,3 +286,22 @@ tr:hover td { background: #fafbff; }
 .btn-secondary { background: #efefef; color: #333;  }
 .btn-danger    { background: #D9534F; color: white; }
 .btn-sm        { padding: 5px 10px; font-size: 12px; }
+
+/* ---- Language select (in settings card) ---- */
+.lang-select {
+  margin-top: 6px;
+  padding: 7px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+  background: white;
+  max-width: 260px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.lang-select:focus {
+  border-color: #4A90D9;
+  box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.18);
+}

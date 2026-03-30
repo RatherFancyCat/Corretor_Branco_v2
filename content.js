@@ -4,6 +4,7 @@ let wordMap = {};
 let enabled = true;
 let settings = { autoCapitalize: false, blacklistedDomains: [] };
 let blockedByDomain = false;
+let currentLang = 'pt';
 
 // Flag to prevent re-entrant corrections when we programmatically set element.value
 let applying = false;
@@ -35,10 +36,11 @@ function checkDomainBlock() {
 }
 
 function loadSettings() {
-  chrome.storage.local.get(['wordMap', 'enabled', 'settings'], (data) => {
+  chrome.storage.local.get(['wordMap', 'enabled', 'settings', 'language'], (data) => {
     wordMap = data.wordMap || {};
     enabled = data.enabled !== false;
     settings = data.settings || { autoCapitalize: false, blacklistedDomains: [] };
+    currentLang = data.language || 'pt';
     checkDomainBlock();
   });
 }
@@ -51,6 +53,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     settings = changes.settings.newValue || { autoCapitalize: false, blacklistedDomains: [] };
     checkDomainBlock();
   }
+  if (changes.language) currentLang = changes.language.newValue || 'pt';
 });
 
 loadSettings();
@@ -371,4 +374,222 @@ if (document.body) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// "Add as misspelled" dialog (triggered via context menu → background.js)
+// ---------------------------------------------------------------------------
 
+function showAddWordDialog(selectedWord) {
+  // Remove any pre-existing dialog
+  const existing = document.getElementById('__cb_add_word_host__');
+  if (existing) existing.remove();
+
+  // Strip leading/trailing punctuation from the selection so the field
+  // starts with a clean word (mirrors the correction logic in the corrector).
+  const cleaned = selectedWord.trim()
+    .replace(LEADING_PUNCT_RE, '')
+    .replace(TRAILING_PUNCT_RE, '');
+
+  // ---- Overlay host (fixed, full-screen, semi-transparent backdrop) --------
+  const host = document.createElement('div');
+  host.id = '__cb_add_word_host__';
+  Object.assign(host.style, {
+    position: 'fixed',
+    inset: '0',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'rgba(0,0,0,0.45)',
+    zIndex: '2147483647',
+    // Isolate from any font the page may set on <html>
+    fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
+  });
+
+  // Attach a shadow DOM so page styles cannot affect the dialog and the
+  // dialog styles cannot leak to the page.
+  const shadow = host.attachShadow({ mode: 'open' });
+
+  // ---- Styles inside shadow ------------------------------------------------
+  const style = document.createElement('style');
+  style.textContent = `
+    *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+    .dialog {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px 22px 18px;
+      box-shadow: 0 6px 28px rgba(0,0,0,0.22);
+      min-width: 300px;
+      max-width: 90vw;
+    }
+    .cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .col-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #444;
+      text-align: center;
+      margin-bottom: 6px;
+    }
+    .col-input {
+      width: 100%;
+      padding: 7px 14px;
+      border: 1.5px solid #ccc;
+      border-radius: 999px;
+      font-size: 13px;
+      color: #222;
+      outline: none;
+      text-align: center;
+      background: #fff;
+      font-family: inherit;
+    }
+    .col-input:focus { border-color: #4A90D9; }
+    .btns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .btn {
+      padding: 8px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-cancel { background: #e04040; color: #fff; }
+    .btn-cancel:hover { background: #c83434; }
+    .btn-ok { background: #38b560; color: #fff; }
+    .btn-ok:hover { background: #2d9e52; }
+    .error {
+      font-size: 11px;
+      color: #e04040;
+      text-align: center;
+      margin-top: 10px;
+      min-height: 1em;
+    }
+  `;
+
+  // ---- Dialog markup -------------------------------------------------------
+  I18n._lang = currentLang;
+
+  const dialog = document.createElement('div');
+  dialog.className = 'dialog';
+  // Stop clicks inside the dialog from bubbling to the backdrop
+  dialog.addEventListener('click', (e) => e.stopPropagation());
+
+  // Column headers + inputs
+  const cols = document.createElement('div');
+  cols.className = 'cols';
+
+  function makeCol(labelKey, inputValue, inputId) {
+    const col = document.createElement('div');
+    const label = document.createElement('div');
+    label.className = 'col-label';
+    label.textContent = I18n.t(labelKey);
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'col-input';
+    input.value = inputValue;
+    input.id = inputId;
+    col.appendChild(label);
+    col.appendChild(input);
+    return { col, input };
+  }
+
+  const { col: incorrectCol, input: incorrectInput } =
+    makeCol('sandbox-th-incorrect', cleaned, 'cb-incorrect');
+  const { col: correctCol, input: correctInput } =
+    makeCol('sandbox-th-correct', '', 'cb-correct');
+  cols.appendChild(incorrectCol);
+  cols.appendChild(correctCol);
+
+  // Buttons
+  const btns = document.createElement('div');
+  btns.className = 'btns';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn btn-cancel';
+  cancelBtn.textContent = I18n.t('ctx-dialog-cancel');
+  const okBtn = document.createElement('button');
+  okBtn.className = 'btn btn-ok';
+  okBtn.textContent = I18n.t('ctx-dialog-ok');
+  btns.appendChild(cancelBtn);
+  btns.appendChild(okBtn);
+
+  // Error message area
+  const errorEl = document.createElement('p');
+  errorEl.className = 'error';
+
+  dialog.appendChild(cols);
+  dialog.appendChild(btns);
+  dialog.appendChild(errorEl);
+
+  shadow.appendChild(style);
+  shadow.appendChild(dialog);
+  document.documentElement.appendChild(host);
+
+  // Auto-focus the "Correct" input (incorrect is pre-filled)
+  setTimeout(() => correctInput.focus(), 30);
+
+  // ---- Close helpers -------------------------------------------------------
+  function handleKeyDown(e) {
+    if (e.key === 'Escape') closeDialog();
+  }
+  document.addEventListener('keydown', handleKeyDown);
+
+  function closeDialog() {
+    document.removeEventListener('keydown', handleKeyDown);
+    host.remove();
+  }
+
+  // Close on backdrop click (host itself, outside dialog)
+  host.addEventListener('click', closeDialog);
+
+  cancelBtn.addEventListener('click', closeDialog);
+
+  // ---- Save on OK ----------------------------------------------------------
+  function handleOk() {
+    const incorrect = incorrectInput.value.trim().toLowerCase();
+    const correct = correctInput.value.trim();
+    errorEl.textContent = '';
+
+    if (!incorrect) {
+      errorEl.textContent = I18n.t('err-empty-incorrect');
+      incorrectInput.focus();
+      return;
+    }
+    if (!correct) {
+      errorEl.textContent = I18n.t('err-empty-correct');
+      correctInput.focus();
+      return;
+    }
+    if (incorrect === correct) {
+      errorEl.textContent = I18n.t('err-same-words');
+      return;
+    }
+
+    chrome.storage.local.get('wordMap', (data) => {
+      const wm = data.wordMap || {};
+      wm[incorrect] = correct;
+      chrome.storage.local.set({ wordMap: wm }, closeDialog);
+    });
+  }
+
+  okBtn.addEventListener('click', handleOk);
+  correctInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleOk();
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Message listener (background.js → content script)
+// ---------------------------------------------------------------------------
+
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg.action === 'showAddWordDialog') {
+    showAddWordDialog(msg.word || '');
+  }
+});
