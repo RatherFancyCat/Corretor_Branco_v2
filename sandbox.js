@@ -10,6 +10,7 @@ let secretOptions = {
   highlightCorrections: false,
   correctionFlair: false,
   xpBar: false,
+  xpBarXp: 0,
 };
 let cbStats = { wordsAdded: 0, correctionsApplied: 0 };
 let cbAchievements = {};
@@ -36,6 +37,7 @@ function loadAll(callback) {
         highlightCorrections: false,
         correctionFlair: false,
         xpBar: false,
+        xpBarXp: 0,
       };
       cbStats = data.cbStats || { wordsAdded: 0, correctionsApplied: 0 };
       cbAchievements = data.cbAchievements || {};
@@ -380,7 +382,12 @@ function incrementCorrections() {
     const stats = data.cbStats || { wordsAdded: 0, correctionsApplied: 0 };
     stats.correctionsApplied = (stats.correctionsApplied || 0) + 1;
     cbStats = stats;
-    chrome.storage.local.set({ cbStats: stats }, checkAndSaveAchievements);
+    if (secretOptions.xpBar) {
+      secretOptions.xpBarXp = (secretOptions.xpBarXp || 0) + 1;
+      chrome.storage.local.set({ cbStats: stats, secretOptions }, checkAndSaveAchievements);
+    } else {
+      chrome.storage.local.set({ cbStats: stats }, checkAndSaveAchievements);
+    }
   });
 }
 
@@ -408,12 +415,12 @@ function computeLevel(totalXp) {
   return { level, currentXp: totalXp - xpUsed, requiredXp: level * 6 };
 }
 
-/** Refresh the XP bar widget to reflect the current cbStats. */
+/** Refresh the XP bar widget to reflect the current XP earned while the option is enabled. */
 function updateXpBar() {
   const fill = document.getElementById('xpBarFill');
   const levelEl = document.getElementById('xpBarLevel');
   if (!fill || !levelEl) return;
-  const { level, currentXp, requiredXp } = computeLevel(cbStats.correctionsApplied || 0);
+  const { level, currentXp, requiredXp } = computeLevel(secretOptions.xpBarXp || 0);
   fill.style.width = (requiredXp > 0 ? Math.min(100, (currentXp / requiredXp) * 100) : 0) + '%';
   levelEl.textContent = level;
 }
@@ -444,9 +451,7 @@ function checkAndSaveAchievements() {
         secretOptions.correctionFlair = true;
         secretChanged = true;
         shouldReveal = true;
-      } else if (def.reward === 'xpbar' && !secretOptions.xpBar) {
-        secretOptions.xpBar = true;
-        secretChanged = true;
+      } else if (def.reward === 'xpbar') {
         shouldReveal = true;
       }
 
