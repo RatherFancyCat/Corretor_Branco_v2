@@ -535,3 +535,61 @@ textarea#testArea:focus {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ---- XP Bar (Experience & Level) ---- */
+.xpbar-opt-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.xpbar-widget {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.xpbar-widget[hidden] { display: none; }
+
+.xpbar-track {
+  flex: 1;
+  height: 16px;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.xpbar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #16a34a 0%, #4ade80 80%, #86efac 100%);
+  border-radius: 999px;
+  transition: width 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.xpbar-lvl-display {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1;
+  white-space: nowrap;
+  min-width: 44px;
+}
+
+.xpbar-lvl-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: rgba(232, 232, 240, 0.6);
+  text-transform: uppercase;
+}
+
+.xpbar-lvl-number {
+  font-size: 28px;
+  font-weight: 700;
+  color: #e8e8f0;
+  font-variant-numeric: tabular-nums;
+}
