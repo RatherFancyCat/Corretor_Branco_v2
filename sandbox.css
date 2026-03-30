@@ -212,6 +212,18 @@ textarea#testArea:focus {
 .btn-secondary { background: #efefef; color: #333; }
 .btn-sm        { padding: 5px 10px; font-size: 12px; }
 .btn-primary   { background: #4A90D9; color: #fff; }
+.btn-danger    { background: #e04040; color: #fff; }
+
+/* ---- Word highlight flash (CSS animation – does not touch cursor) ---- */
+@keyframes correction-flash {
+  0%   { border-color: #27AE60; box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.45); }
+  70%  { border-color: #27AE60; box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.45); }
+  100% { border-color: #4A90D9; box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.18); }
+}
+
+textarea#testArea.correction-flash {
+  animation: correction-flash 1.5s ease-out forwards;
+}
 
 /* ---- Textarea wrapper (needed for future overlay) ---- */
 .textarea-wrapper {
@@ -409,6 +421,17 @@ textarea#testArea:focus {
 
 .modal-close:hover { background: rgba(255, 255, 255, 0.35); }
 
+.modal-footer {
+  padding: 12px 20px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  background: #fafafa;
+}
+
+.modal-footer .btn-danger:hover { background: #c83434; }
+
 .achievements-list {
   overflow-y: auto;
   padding: 16px;
@@ -460,3 +483,48 @@ textarea#testArea:focus {
 .ach-desc  { font-size: 12px; color: #666; }
 .ach-reward { font-size: 11px; color: #999; font-style: italic; }
 .ach-date  { font-size: 11px; color: #22c55e; font-weight: 600; margin-top: 2px; }
+
+/* ---- Achievement toast notification ---- */
+.ach-toast {
+  position: fixed;
+  right: -320px;
+  width: 280px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.28);
+  transition: right 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 9998;
+  pointer-events: none;
+  user-select: none;
+}
+
+.ach-toast.ach-toast-visible { right: 20px; }
+
+.ach-toast-icon { font-size: 26px; flex-shrink: 0; }
+
+.ach-toast-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ach-toast-body strong {
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  opacity: 0.85;
+  text-transform: uppercase;
+}
+
+.ach-toast-body span {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

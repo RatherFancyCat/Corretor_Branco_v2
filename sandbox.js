@@ -13,16 +13,12 @@ let secretOptions = {
 };
 let cbStats = { wordsAdded: 0, correctionsApplied: 0 };
 let cbAchievements = {};
-// Flag cleared by any user keystroke so the cursor-restore timeout
-// after a word-highlight is cancelled if the user starts typing.
-let highlightPendingRestore = false;
 
 const PUNCT_CLASS = ".,!?;:'\"()\\[\\]{}\\-\\/\\\\«»\u201C\u201D\u2018\u2019";
 const SEPARATOR_RE = new RegExp('[\\s' + PUNCT_CLASS + ']');
 const SENTENCE_END_RE = /[.!?]/;
 const LEADING_PUNCT_RE = new RegExp('^[' + PUNCT_CLASS + ']+');
 const TRAILING_PUNCT_RE = new RegExp('[' + PUNCT_CLASS + ']+$');
-const HIGHLIGHT_DURATION_MS = 1500;
 const FLAIR_OPTIONS = ['✨', '🎉', '⭐', '💫', '✅'];
 
 // ---------------------------------------------------------------------------
@@ -131,14 +127,13 @@ function correctTextarea(element) {
   const trailingLen = strippedLeading.length - typedWord.length;
   const wordStart = cursorPos - 1 - rawToken.length + leadingLen;
 
-  let finalCursorPos;
   applying = true;
   try {
     const newValue =
       value.substring(0, wordStart) + correction + value.substring(wordStart + typedWord.length);
     element.value = newValue;
-    finalCursorPos = wordStart + correction.length + trailingLen + 1;
-    element.setSelectionRange(finalCursorPos, finalCursorPos);
+    const newCursorPos = wordStart + correction.length + trailingLen + 1;
+    element.setSelectionRange(newCursorPos, newCursorPos);
     logCorrection(typedWord, correction);
   } finally {
     applying = false;
@@ -146,7 +141,7 @@ function correctTextarea(element) {
 
   // Secret features (called after applying = false so they don't interfere)
   showCorrectionFlair();
-  highlightCorrectedWord(element, wordStart, correction.length, finalCursorPos);
+  highlightCorrectedWord(element);
   incrementCorrections();
 }
 
@@ -307,17 +302,18 @@ function showCorrectionFlair() {
   setTimeout(() => flair.remove(), 800);
 }
 
-function highlightCorrectedWord(element, wordStart, correctionLength, finalCursorPos) {
+function highlightCorrectedWord(element) {
   if (!secretOptions.highlightCorrections) return;
-  // Select the corrected word so the browser shows it highlighted
-  element.setSelectionRange(wordStart, wordStart + correctionLength);
-  highlightPendingRestore = true;
-  setTimeout(() => {
-    if (highlightPendingRestore) {
-      element.setSelectionRange(finalCursorPos, finalCursorPos);
-      highlightPendingRestore = false;
-    }
-  }, HIGHLIGHT_DURATION_MS);
+  // Remove the class first (in case a previous correction is still animating)
+  // then force a reflow so the browser restarts the animation from scratch.
+  element.classList.remove('correction-flash');
+  void element.offsetWidth; // eslint-disable-line no-void
+  element.classList.add('correction-flash');
+  element.addEventListener(
+    'animationend',
+    () => element.classList.remove('correction-flash'),
+    { once: true }
+  );
 }
 
 function incrementCorrections() {
@@ -338,6 +334,11 @@ function checkAndSaveAchievements() {
   if (newlyUnlocked.length > 0) {
     cbAchievements = updated;
     chrome.storage.local.set({ cbAchievements: updated });
+    // Show a toast for each newly unlocked achievement, staggered slightly
+    newlyUnlocked.forEach((id, i) => {
+      const def = ACHIEVEMENT_DEFINITIONS.find((d) => d.id === id);
+      if (def) setTimeout(() => showAchievementToast(def), i * 400);
+    });
   }
 }
 
@@ -376,6 +377,51 @@ function renderAchievements() {
   }
 
   list.innerHTML = html;
+}
+
+// ---------------------------------------------------------------------------
+// Achievement toast notifications
+// ---------------------------------------------------------------------------
+
+function showAchievementToast(def) {
+  if (!secretOptions.achievementsEnabled) return;
+
+  // Stack toasts upward: each new toast sits above existing ones
+  const existing = document.querySelectorAll('.ach-toast');
+  const bottomOffset = 20 + existing.length * 76; // 76px stride per toast (≈68px height + 8px gap)
+
+  const toast = document.createElement('div');
+  toast.className = 'ach-toast';
+  toast.style.bottom = bottomOffset + 'px';
+  toast.innerHTML =
+    `<span class="ach-toast-icon">🏆</span>` +
+    `<div class="ach-toast-body">` +
+      `<strong>Achievement Unlocked!</strong>` +
+      `<span title="${escapeHtml(def.name)}">${escapeHtml(def.name)}</span>` +
+    `</div>`;
+  document.body.appendChild(toast);
+
+  // Slide in on next frame
+  requestAnimationFrame(() => toast.classList.add('ach-toast-visible'));
+
+  // Slide out after 3.5 s
+  setTimeout(() => {
+    toast.classList.remove('ach-toast-visible');
+    setTimeout(() => toast.remove(), 400);
+  }, 3500);
+}
+
+// ---------------------------------------------------------------------------
+// Reset achievements
+// ---------------------------------------------------------------------------
+
+function resetAchievements() {
+  if (!confirm('Are you sure you want to reset all achievements and progress? This cannot be undone.')) return;
+  cbAchievements = {};
+  cbStats = { wordsAdded: 0, correctionsApplied: 0 };
+  chrome.storage.local.set({ cbAchievements: {}, cbStats: { wordsAdded: 0, correctionsApplied: 0 } }, () => {
+    renderAchievements();
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -420,8 +466,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const testArea = document.getElementById('testArea');
   testArea.addEventListener('input', (event) => {
-    // Any real keystroke cancels the pending highlight cursor-restore
-    highlightPendingRestore = false;
     if (applying) return;
     if (Object.keys(wordMap).length > 0) correctTextarea(testArea);
     if (settings.autoCapitalize) autoCapitalizeTextarea(testArea, event);
@@ -429,7 +473,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('clearTextBtn').addEventListener('click', () => {
-    highlightPendingRestore = false;
     testArea.value = '';
     testArea.focus();
     const log = document.getElementById('correctionLog');
@@ -454,6 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Achievements modal
   document.getElementById('openAchievementsBtn').addEventListener('click', openAchievementsModal);
   document.getElementById('closeAchievementsBtn').addEventListener('click', closeAchievementsModal);
+  document.getElementById('resetAchievementsBtn').addEventListener('click', resetAchievements);
   document.getElementById('achievementsModal').addEventListener('click', (e) => {
     if (e.target === e.currentTarget) closeAchievementsModal();
   });
