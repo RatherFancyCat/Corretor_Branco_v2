@@ -537,10 +537,10 @@ textarea#testArea:focus {
 }
 
 /* ---- XP Bar (Experience & Level) ---- */
-.xpbar-opt-body {
+#optXpBarRow .xpbar-opt-body {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   flex: 1;
   min-width: 0;
 }
@@ -548,25 +548,26 @@ textarea#testArea:focus {
 .xpbar-widget {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .xpbar-widget[hidden] { display: none; }
 
 .xpbar-track {
   flex: 1;
-  height: 16px;
-  background: rgba(0, 0, 0, 0.45);
+  height: 26px;
+  background: rgba(0, 0, 0, 0.55);
   border-radius: 999px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.10);
 }
 
 .xpbar-fill {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, #16a34a 0%, #4ade80 80%, #86efac 100%);
+  background: #00e600;
   border-radius: 999px;
+  box-shadow: 0 0 10px #00e600, 0 0 20px rgba(0, 230, 0, 0.5);
   transition: width 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
@@ -574,22 +575,25 @@ textarea#testArea:focus {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  justify-content: center;
   line-height: 1;
   white-space: nowrap;
-  min-width: 44px;
+  min-width: 54px;
 }
 
-.xpbar-lvl-label {
-  font-size: 10px;
+#optXpBarRow .xpbar-lvl-label {
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 1px;
-  color: rgba(232, 232, 240, 0.6);
+  color: rgba(232, 232, 240, 0.65);
   text-transform: uppercase;
+  margin-bottom: 2px;
 }
 
-.xpbar-lvl-number {
-  font-size: 28px;
+#optXpBarRow .xpbar-lvl-number {
+  font-size: 52px;
   font-weight: 700;
   color: #e8e8f0;
   font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
