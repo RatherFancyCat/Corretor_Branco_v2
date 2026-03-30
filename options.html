@@ -42,23 +42,31 @@
         <label class="setting-item">
           <input type="checkbox" id="autoCapitalizeChk">
           <div class="setting-text">
-            <span class="setting-label" data-i18n="opts-autocap-label">Capitalizar automaticamente a primeira palavra de uma frase</span>
-            <span class="setting-desc" data-i18n="opts-autocap-desc">Aplica-se no início de um novo parágrafo ou após um símbolo de fim de frase (como
+            <span class="setting-label" data-i18n="opts-autocap-label">Capitalizar automaticamente a primeira palavra de
+              uma frase</span>
+            <span class="setting-desc" data-i18n="opts-autocap-desc">Aplica-se no início de um novo parágrafo ou após um
+              símbolo de fim de frase (como
               «.», «!» ou «?»).</span>
           </div>
         </label>
 
         <div class="setting-item setting-item--block">
-          <label class="setting-label" for="blacklistDomains" data-i18n="opts-blacklist-label">Lista negra de domínios</label>
-          <span class="setting-desc" data-i18n="opts-blacklist-desc">Se a página atual pertencer a um domínio desta lista, a extensão não realizará
+          <label class="setting-label" for="blacklistDomains" data-i18n="opts-blacklist-label">Lista negra de
+            domínios</label>
+          <span class="setting-desc" data-i18n="opts-blacklist-desc">Se a página atual pertencer a um domínio desta
+            lista, a extensão não realizará
             quaisquer correções. Introduza um domínio por linha (ex: exemplo.com).</span>
-          <textarea id="blacklistDomains" class="domain-textarea"
-            data-i18n-placeholder="opts-blacklist-ph"
-            placeholder="exemplo.com&#10;outrosite.pt"
-            spellcheck="false" autocomplete="off"></textarea>
+          <textarea id="blacklistDomains" class="domain-textarea" data-i18n-placeholder="opts-blacklist-ph"
+            placeholder="exemplo.com&#10;outrosite.pt" spellcheck="false" autocomplete="off"></textarea>
           <button id="saveBlacklistBtn" class="btn btn-primary btn-sm" data-i18n="opts-btn-save">Guardar</button>
         </div>
-
+        <div class="setting-item setting-item--block">
+          <label class="setting-label" data-i18n="opts-achievements-h2">Achievements</label>
+          <span class="setting-desc" data-i18n="opts-achievements-desc">Track and view your correction
+            milestones.</span>
+          <button id="viewAchievementsBtn" class="btn btn-primary" style="margin-top:12px"
+            data-i18n="secret-btn-view-achievements">🏆 View Achievements</button>
+        </div>
       </div>
     </section>
 
@@ -79,16 +87,12 @@
         <div class="form-row">
           <div class="form-group">
             <label for="incorrectWord" data-i18n="opts-incorrect-label">Palavra com erro</label>
-            <input type="text" id="incorrectWord"
-              data-i18n-placeholder="opts-incorrect-ph"
-              placeholder="ex: nao">
+            <input type="text" id="incorrectWord" data-i18n-placeholder="opts-incorrect-ph" placeholder="ex: nao">
           </div>
           <span class="form-arrow" aria-hidden="true">&#8594;</span>
           <div class="form-group">
             <label for="correctWord" data-i18n="opts-correct-label">Correção</label>
-            <input type="text" id="correctWord"
-              data-i18n-placeholder="opts-correct-ph"
-              placeholder="ex: não">
+            <input type="text" id="correctWord" data-i18n-placeholder="opts-correct-ph" placeholder="ex: não">
           </div>
           <button type="submit" class="btn btn-primary" data-i18n="opts-btn-add">Adicionar</button>
         </div>
@@ -104,8 +108,7 @@
           <span id="wordCount" class="badge">0</span>
         </div>
         <div class="table-controls">
-          <input type="text" id="searchInput" class="search-input"
-            data-i18n-placeholder="opts-search-ph"
+          <input type="text" id="searchInput" class="search-input" data-i18n-placeholder="opts-search-ph"
             placeholder="&#128269; Pesquisar palavras…">
           <button id="clearAllBtn" class="btn btn-danger" data-i18n="opts-btn-clear-all">&#128465; Limpar Tudo</button>
         </div>
@@ -131,7 +134,8 @@
     <section class="card">
       <h2 data-i18n="opts-achievements-h2">Achievements</h2>
       <p class="setting-desc" data-i18n="opts-achievements-desc">Track and view your correction milestones.</p>
-      <button id="viewAchievementsBtn" class="btn btn-primary" style="margin-top:12px" data-i18n="secret-btn-view-achievements">🏆 View Achievements</button>
+      <button id="viewAchievementsBtn" class="btn btn-primary" style="margin-top:12px"
+        data-i18n="secret-btn-view-achievements">🏆 View Achievements</button>
     </section>
 
   </div><!-- /.container -->
@@ -154,7 +158,8 @@
       </div>
       <div id="achievementsList" class="achievements-list"></div>
       <div class="modal-footer">
-        <button id="resetAchievementsBtn" class="btn btn-danger btn-sm" data-i18n="secret-btn-reset-achievements">🗑 Reset Achievements</button>
+        <button id="resetAchievementsBtn" class="btn btn-danger btn-sm" data-i18n="secret-btn-reset-achievements">🗑
+          Reset Achievements</button>
       </div>
     </div>
   </div>
