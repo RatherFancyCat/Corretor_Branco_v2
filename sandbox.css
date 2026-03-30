@@ -303,6 +303,8 @@ textarea#testArea.correction-flash {
   gap: 8px;
 }
 
+.secret-opt[hidden] { display: none; }
+
 .secret-opt {
   display: flex;
   align-items: flex-start;
