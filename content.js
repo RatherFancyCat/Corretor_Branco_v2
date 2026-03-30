@@ -59,6 +59,18 @@ chrome.storage.onChanged.addListener((changes, area) => {
 loadSettings();
 
 // ---------------------------------------------------------------------------
+// Stats tracking (for achievements)
+// ---------------------------------------------------------------------------
+
+function recordCorrection() {
+  chrome.storage.local.get('cbStats', (data) => {
+    const stats = data.cbStats || { wordsAdded: 0, correctionsApplied: 0 };
+    stats.correctionsApplied = (stats.correctionsApplied || 0) + 1;
+    chrome.storage.local.set({ cbStats: stats });
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Correction logic
 // ---------------------------------------------------------------------------
 
@@ -142,6 +154,8 @@ function correctInputElement(element) {
   } finally {
     applying = false;
   }
+
+  recordCorrection();
 }
 
 /**
@@ -195,6 +209,8 @@ function correctContentEditable(element) {
   } finally {
     applying = false;
   }
+
+  recordCorrection();
 }
 
 // ---------------------------------------------------------------------------

@@ -30,13 +30,15 @@
           Escreva texto abaixo. As palavras são corrigidas automaticamente ao escrever
           um espaço ou pontuação depois delas.
         </p>
-        <textarea id="testArea"
-                  data-i18n-placeholder="sandbox-area-ph"
-                  placeholder="Comece a escrever aqui… ex: escreva uma palavra com erro e prima Espaço."
-                  spellcheck="false"
-                  autocorrect="off"
-                  autocomplete="off"
-                  autocapitalize="off"></textarea>
+        <div class="textarea-wrapper">
+          <textarea id="testArea"
+                    data-i18n-placeholder="sandbox-area-ph"
+                    placeholder="Comece a escrever aqui… ex: escreva uma palavra com erro e prima Espaço."
+                    spellcheck="false"
+                    autocorrect="off"
+                    autocomplete="off"
+                    autocapitalize="off"></textarea>
+        </div>
 
         <div class="correction-log">
           <h3 data-i18n="sandbox-log-h3">Correções aplicadas</h3>
@@ -61,9 +63,58 @@
       </section>
 
     </div>
+
+    <!-- Super Secret Options (revealed by easter egg) -->
+    <section id="secretPanel" class="card secret-panel" hidden>
+      <div class="secret-title">
+        <span class="secret-icon">🔓</span>
+        <h2>Super Secret Options</h2>
+        <span class="secret-tag">UNLOCKED</span>
+      </div>
+      <p class="secret-subtitle">You found the easter egg! These options are for the chosen few.</p>
+      <div class="secret-opts">
+        <label class="secret-opt">
+          <input type="checkbox" id="optHighlight">
+          <div>
+            <strong>✨ Word Highlight</strong>
+            <span>Briefly highlight the corrected word for 1.5 seconds</span>
+          </div>
+        </label>
+        <label class="secret-opt">
+          <input type="checkbox" id="optFlair">
+          <div>
+            <strong>🎉 Correction Flair</strong>
+            <span>Show a sparkle animation whenever a word is corrected</span>
+          </div>
+        </label>
+        <label class="secret-opt">
+          <input type="checkbox" id="optAchievements">
+          <div>
+            <strong>🏆 Achievements</strong>
+            <span>Track and unlock achievements as you use the extension</span>
+          </div>
+        </label>
+      </div>
+      <button id="openAchievementsBtn" class="btn btn-primary" hidden>
+        🏆 View Achievements
+      </button>
+    </section>
+
+  </div>
+
+  <!-- Achievements Modal -->
+  <div id="achievementsModal" class="modal-backdrop" hidden>
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2>🏆 Achievements</h2>
+        <button id="closeAchievementsBtn" class="modal-close">✕</button>
+      </div>
+      <div id="achievementsList" class="achievements-list"></div>
+    </div>
   </div>
 
   <script src="i18n.js"></script>
+  <script src="achievements.js"></script>
   <script src="sandbox.js"></script>
 </body>
 </html>

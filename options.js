@@ -127,6 +127,19 @@ function escapeCSV(value) {
 }
 
 // ---------------------------------------------------------------------------
+// Stats tracking (for achievements)
+// ---------------------------------------------------------------------------
+
+function recordWordsAdded(count) {
+  if (!count || count <= 0) return;
+  chrome.storage.local.get('cbStats', (data) => {
+    const stats = data.cbStats || { wordsAdded: 0, correctionsApplied: 0 };
+    stats.wordsAdded = (stats.wordsAdded || 0) + count;
+    chrome.storage.local.set({ cbStats: stats });
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Event: Add word pair
 // ---------------------------------------------------------------------------
 
@@ -166,6 +179,7 @@ document.getElementById('addWordForm').addEventListener('submit', (e) => {
     correctEl.value = '';
     incorrectEl.focus();
     renderWordList(document.getElementById('searchInput').value);
+    recordWordsAdded(1);
   });
 });
 
@@ -282,6 +296,7 @@ document.getElementById('importFile').addEventListener('change', (e) => {
       let msg = I18n.t('msg-imported', { count: imported });
       if (skipped > 0) msg += ' ' + I18n.t('msg-skipped', { count: skipped });
       alert(msg);
+      recordWordsAdded(imported);
     });
   };
   reader.readAsText(file);

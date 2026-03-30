@@ -4,24 +4,54 @@ let wordMap = {};
 let settings = { autoCapitalize: false, blacklistedDomains: [] };
 let applying = false;
 
+// Secret options state
+let secretOptions = {
+  revealed: false,
+  highlightCorrections: false,
+  correctionFlair: false,
+  achievementsEnabled: false,
+};
+let cbStats = { wordsAdded: 0, correctionsApplied: 0 };
+let cbAchievements = {};
+// Flag cleared by any user keystroke so the cursor-restore timeout
+// after a word-highlight is cancelled if the user starts typing.
+let highlightPendingRestore = false;
+
 const PUNCT_CLASS = ".,!?;:'\"()\\[\\]{}\\-\\/\\\\«»\u201C\u201D\u2018\u2019";
 const SEPARATOR_RE = new RegExp('[\\s' + PUNCT_CLASS + ']');
 const SENTENCE_END_RE = /[.!?]/;
 const LEADING_PUNCT_RE = new RegExp('^[' + PUNCT_CLASS + ']+');
 const TRAILING_PUNCT_RE = new RegExp('[' + PUNCT_CLASS + ']+$');
+const HIGHLIGHT_DURATION_MS = 1500;
+const FLAIR_OPTIONS = ['✨', '🎉', '⭐', '💫', '✅'];
 
 // ---------------------------------------------------------------------------
 // Storage
 // ---------------------------------------------------------------------------
 
 function loadAll(callback) {
-  chrome.storage.local.get(['wordMap', 'settings', 'language'], (data) => {
-    wordMap = data.wordMap || {};
-    settings = data.settings || { autoCapitalize: false, blacklistedDomains: [] };
-    const lang = data.language || 'pt';
-    I18n._lang = lang;
-    if (callback) callback(lang);
-  });
+  chrome.storage.local.get(
+    ['wordMap', 'settings', 'language', 'secretOptions', 'cbStats', 'cbAchievements'],
+    (data) => {
+      wordMap = data.wordMap || {};
+      settings = data.settings || { autoCapitalize: false, blacklistedDomains: [] };
+      secretOptions = data.secretOptions || {
+        revealed: false,
+        highlightCorrections: false,
+        correctionFlair: false,
+        achievementsEnabled: false,
+      };
+      cbStats = data.cbStats || { wordsAdded: 0, correctionsApplied: 0 };
+      cbAchievements = data.cbAchievements || {};
+      const lang = data.language || 'pt';
+      I18n._lang = lang;
+      if (callback) callback(lang);
+    }
+  );
+}
+
+function saveSecretOptions() {
+  chrome.storage.local.set({ secretOptions });
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -42,6 +72,17 @@ chrome.storage.onChanged.addListener((changes, area) => {
     if (log && log.querySelector('.no-corrections')) {
       log.innerHTML = `<li class="no-corrections">${I18n.t('sandbox-no-corrections')}</li>`;
     }
+  }
+  if (changes.cbStats) {
+    cbStats = changes.cbStats.newValue || { wordsAdded: 0, correctionsApplied: 0 };
+    checkAndSaveAchievements();
+  }
+  if (changes.cbAchievements) {
+    cbAchievements = changes.cbAchievements.newValue || {};
+  }
+  if (changes.secretOptions) {
+    secretOptions = changes.secretOptions.newValue || secretOptions;
+    updateSecretUI();
   }
 });
 
@@ -90,17 +131,23 @@ function correctTextarea(element) {
   const trailingLen = strippedLeading.length - typedWord.length;
   const wordStart = cursorPos - 1 - rawToken.length + leadingLen;
 
+  let finalCursorPos;
   applying = true;
   try {
     const newValue =
       value.substring(0, wordStart) + correction + value.substring(wordStart + typedWord.length);
     element.value = newValue;
-    const newCursorPos = wordStart + correction.length + trailingLen + 1;
-    element.setSelectionRange(newCursorPos, newCursorPos);
+    finalCursorPos = wordStart + correction.length + trailingLen + 1;
+    element.setSelectionRange(finalCursorPos, finalCursorPos);
     logCorrection(typedWord, correction);
   } finally {
     applying = false;
   }
+
+  // Secret features (called after applying = false so they don't interfere)
+  showCorrectionFlair();
+  highlightCorrectedWord(element, wordStart, correction.length, finalCursorPos);
+  incrementCorrections();
 }
 
 // ---------------------------------------------------------------------------
@@ -219,6 +266,136 @@ function attachGoToOptions() {
 }
 
 // ---------------------------------------------------------------------------
+// Easter egg
+// ---------------------------------------------------------------------------
+
+const EASTER_EGG_PHRASE = 'ratherfancycat is a cool dude';
+
+function checkEasterEgg() {
+  if (secretOptions.revealed) return;
+  const val = document.getElementById('testArea').value.toLowerCase();
+  if (val.includes(EASTER_EGG_PHRASE)) {
+    secretOptions.revealed = true;
+    saveSecretOptions();
+    revealSecretPanel();
+  }
+}
+
+function revealSecretPanel() {
+  const panel = document.getElementById('secretPanel');
+  if (!panel) return;
+  panel.hidden = false;
+  // Trigger the entrance animation on the next frame
+  requestAnimationFrame(() => panel.classList.add('secret-revealed'));
+  updateSecretUI();
+}
+
+// ---------------------------------------------------------------------------
+// Secret features
+// ---------------------------------------------------------------------------
+
+function showCorrectionFlair() {
+  if (!secretOptions.correctionFlair) return;
+  const textarea = document.getElementById('testArea');
+  const rect = textarea.getBoundingClientRect();
+  const flair = document.createElement('div');
+  flair.className = 'correction-flair';
+  flair.textContent = FLAIR_OPTIONS[Math.floor(Math.random() * FLAIR_OPTIONS.length)];
+  flair.style.left = (rect.left + Math.random() * Math.max(rect.width - 30, 10)) + 'px';
+  flair.style.top = (rect.top + Math.random() * Math.max(rect.height / 2, 10)) + 'px';
+  document.body.appendChild(flair);
+  setTimeout(() => flair.remove(), 800);
+}
+
+function highlightCorrectedWord(element, wordStart, correctionLength, finalCursorPos) {
+  if (!secretOptions.highlightCorrections) return;
+  // Select the corrected word so the browser shows it highlighted
+  element.setSelectionRange(wordStart, wordStart + correctionLength);
+  highlightPendingRestore = true;
+  setTimeout(() => {
+    if (highlightPendingRestore) {
+      element.setSelectionRange(finalCursorPos, finalCursorPos);
+      highlightPendingRestore = false;
+    }
+  }, HIGHLIGHT_DURATION_MS);
+}
+
+function incrementCorrections() {
+  chrome.storage.local.get('cbStats', (data) => {
+    const stats = data.cbStats || { wordsAdded: 0, correctionsApplied: 0 };
+    stats.correctionsApplied = (stats.correctionsApplied || 0) + 1;
+    cbStats = stats;
+    chrome.storage.local.set({ cbStats: stats }, checkAndSaveAchievements);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Achievements
+// ---------------------------------------------------------------------------
+
+function checkAndSaveAchievements() {
+  const { newlyUnlocked, updated } = processAchievements(cbStats, cbAchievements);
+  if (newlyUnlocked.length > 0) {
+    cbAchievements = updated;
+    chrome.storage.local.set({ cbAchievements: updated });
+  }
+}
+
+function openAchievementsModal() {
+  // Re-check achievements against latest stats before displaying
+  checkAndSaveAchievements();
+  renderAchievements();
+  document.getElementById('achievementsModal').hidden = false;
+}
+
+function closeAchievementsModal() {
+  document.getElementById('achievementsModal').hidden = true;
+}
+
+function renderAchievements() {
+  const list = document.getElementById('achievementsList');
+  const unlockedCount = ACHIEVEMENT_DEFINITIONS.filter((d) => cbAchievements[d.id]).length;
+
+  let html =
+    `<div class="ach-summary">${unlockedCount} / ${ACHIEVEMENT_DEFINITIONS.length} unlocked</div>`;
+
+  for (const def of ACHIEVEMENT_DEFINITIONS) {
+    const unlockedAt = cbAchievements[def.id];
+    const dateStr = unlockedAt ? new Date(unlockedAt).toLocaleString() : null;
+
+    html +=
+      `<div class="ach-item ${unlockedAt ? 'ach-unlocked' : 'ach-locked'}">` +
+        `<div class="ach-icon">${unlockedAt ? '🏆' : '🔒'}</div>` +
+        `<div class="ach-info">` +
+          `<strong class="ach-name">${escapeHtml(def.name)}</strong>` +
+          `<span class="ach-desc">${escapeHtml(def.desc)}</span>` +
+          `<span class="ach-reward">Reward: ${def.reward ? escapeHtml(def.reward) : 'None'}</span>` +
+          (dateStr ? `<span class="ach-date">Unlocked: ${escapeHtml(dateStr)}</span>` : '') +
+        `</div>` +
+      `</div>`;
+  }
+
+  list.innerHTML = html;
+}
+
+// ---------------------------------------------------------------------------
+// Secret UI state
+// ---------------------------------------------------------------------------
+
+function updateSecretUI() {
+  const optHighlight = document.getElementById('optHighlight');
+  const optFlair = document.getElementById('optFlair');
+  const optAchievements = document.getElementById('optAchievements');
+  const openBtn = document.getElementById('openAchievementsBtn');
+  if (!optHighlight) return; // DOM not ready yet
+
+  optHighlight.checked = !!secretOptions.highlightCorrections;
+  optFlair.checked = !!secretOptions.correctionFlair;
+  optAchievements.checked = !!secretOptions.achievementsEnabled;
+  openBtn.hidden = !secretOptions.achievementsEnabled;
+}
+
+// ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 
@@ -226,20 +403,62 @@ document.addEventListener('DOMContentLoaded', () => {
   loadAll((lang) => {
     I18n.apply(lang);
     renderWordList();
+
+    // Show secret panel immediately if already revealed in a previous session
+    if (secretOptions.revealed) {
+      const panel = document.getElementById('secretPanel');
+      if (panel) {
+        panel.hidden = false;
+        panel.classList.add('secret-revealed');
+      }
+      updateSecretUI();
+    }
+
+    // Process any achievements that may have been earned while the page was closed
+    checkAndSaveAchievements();
   });
 
   const testArea = document.getElementById('testArea');
   testArea.addEventListener('input', (event) => {
+    // Any real keystroke cancels the pending highlight cursor-restore
+    highlightPendingRestore = false;
     if (applying) return;
     if (Object.keys(wordMap).length > 0) correctTextarea(testArea);
     if (settings.autoCapitalize) autoCapitalizeTextarea(testArea, event);
+    checkEasterEgg();
   });
 
   document.getElementById('clearTextBtn').addEventListener('click', () => {
+    highlightPendingRestore = false;
     testArea.value = '';
     testArea.focus();
     const log = document.getElementById('correctionLog');
     log.innerHTML = `<li class="no-corrections">${I18n.t('sandbox-no-corrections')}</li>`;
+  });
+
+  // Secret option checkboxes
+  document.getElementById('optHighlight').addEventListener('change', (e) => {
+    secretOptions.highlightCorrections = e.target.checked;
+    saveSecretOptions();
+  });
+  document.getElementById('optFlair').addEventListener('change', (e) => {
+    secretOptions.correctionFlair = e.target.checked;
+    saveSecretOptions();
+  });
+  document.getElementById('optAchievements').addEventListener('change', (e) => {
+    secretOptions.achievementsEnabled = e.target.checked;
+    saveSecretOptions();
+    document.getElementById('openAchievementsBtn').hidden = !e.target.checked;
+  });
+
+  // Achievements modal
+  document.getElementById('openAchievementsBtn').addEventListener('click', openAchievementsModal);
+  document.getElementById('closeAchievementsBtn').addEventListener('click', closeAchievementsModal);
+  document.getElementById('achievementsModal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeAchievementsModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeAchievementsModal();
   });
 
   attachGoToOptions();
