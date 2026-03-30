@@ -214,15 +214,20 @@ textarea#testArea:focus {
 .btn-primary   { background: #4A90D9; color: #fff; }
 .btn-danger    { background: #e04040; color: #fff; }
 
-/* ---- Word highlight flash (CSS animation – does not touch cursor) ---- */
-@keyframes correction-flash {
-  0%   { border-color: #27AE60; box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.45); }
-  70%  { border-color: #27AE60; box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.45); }
-  100% { border-color: #4A90D9; box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.18); }
+/* ---- Word highlight flash – small overlay positioned over the corrected word ---- */
+.correction-word-flash {
+  position: absolute;
+  background: rgba(39, 174, 96, 0.35);
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 2;
+  animation: word-flash 1.5s ease-out forwards;
 }
 
-textarea#testArea.correction-flash {
-  animation: correction-flash 1.5s ease-out forwards;
+@keyframes word-flash {
+  0%   { opacity: 1; }
+  70%  { opacity: 0.6; }
+  100% { opacity: 0; }
 }
 
 /* ---- Textarea wrapper (needed for future overlay) ---- */

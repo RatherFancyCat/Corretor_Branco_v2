@@ -139,7 +139,7 @@ function correctTextarea(element) {
 
   // Secret features (called after applying = false so they don't interfere)
   showCorrectionFlair();
-  highlightCorrectedWord(element);
+  highlightCorrectedWord(element, wordStart, correction.length);
   incrementCorrections();
 }
 
@@ -323,18 +323,53 @@ function showCorrectionFlair() {
   setTimeout(() => flair.remove(), 800);
 }
 
-function highlightCorrectedWord(element) {
+function highlightCorrectedWord(element, wordStart, wordLength) {
   if (!secretOptions.highlightCorrections) return;
-  // Remove the class first (in case a previous correction is still animating)
-  // then force a reflow so the browser restarts the animation from scratch.
-  element.classList.remove('correction-flash');
-  void element.offsetWidth; // eslint-disable-line no-void
-  element.classList.add('correction-flash');
-  element.addEventListener(
-    'animationend',
-    () => element.classList.remove('correction-flash'),
-    { once: true }
-  );
+  const wrapper = element.closest('.textarea-wrapper');
+  if (!wrapper) return;
+
+  // Build a hidden mirror div that exactly replicates the textarea's text layout
+  // so we can measure the pixel position of the corrected word.
+  const cs = window.getComputedStyle(element);
+  const mirror = document.createElement('div');
+  [
+    'boxSizing', 'width',
+    'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+    'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
+    'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing',
+    'wordSpacing', 'tabSize', 'lineHeight',
+  ].forEach((p) => { mirror.style[p] = cs[p]; });
+  mirror.style.position = 'absolute';
+  mirror.style.top = '0';
+  mirror.style.left = '0';
+  mirror.style.visibility = 'hidden';
+  mirror.style.overflow = 'hidden';
+  mirror.style.height = element.offsetHeight + 'px';
+  mirror.style.whiteSpace = 'pre-wrap';
+  mirror.style.wordWrap = 'break-word';
+
+  const text = element.value;
+  const markEl = document.createElement('mark');
+  markEl.textContent = text.substring(wordStart, wordStart + wordLength);
+  mirror.appendChild(document.createTextNode(text.substring(0, wordStart)));
+  mirror.appendChild(markEl);
+  wrapper.appendChild(mirror);
+  mirror.scrollTop = element.scrollTop;
+
+  const markRect = markEl.getBoundingClientRect();
+  const wrapperRect = wrapper.getBoundingClientRect();
+  mirror.remove();
+
+  if (markRect.width === 0 || markRect.height === 0) return;
+
+  const hl = document.createElement('div');
+  hl.className = 'correction-word-flash';
+  hl.style.left = (markRect.left - wrapperRect.left) + 'px';
+  hl.style.top = (markRect.top - wrapperRect.top) + 'px';
+  hl.style.width = markRect.width + 'px';
+  hl.style.height = markRect.height + 'px';
+  wrapper.appendChild(hl);
+  setTimeout(() => hl.remove(), 1500);
 }
 
 function incrementCorrections() {

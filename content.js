@@ -9,6 +9,9 @@ let currentLang = 'pt';
 // Flag to prevent re-entrant corrections when we programmatically set element.value
 let applying = false;
 
+const FLAIR_OPTIONS = ['✨', '🎉', '⭐', '💫', '✅'];
+let secretOptions = { revealed: false, highlightCorrections: false, correctionFlair: false };
+
 // Characters that mark the end of a word
 // PUNCT_CLASS is the non-whitespace subset; SEPARATOR_RE also includes \s.
 const PUNCT_CLASS = ".,!?;:'\"()\\[\\]{}\\-\\/\\\\«»\u201C\u201D\u2018\u2019";
@@ -36,11 +39,12 @@ function checkDomainBlock() {
 }
 
 function loadSettings() {
-  chrome.storage.local.get(['wordMap', 'enabled', 'settings', 'language'], (data) => {
+  chrome.storage.local.get(['wordMap', 'enabled', 'settings', 'language', 'secretOptions'], (data) => {
     wordMap = data.wordMap || {};
     enabled = data.enabled !== false;
     settings = data.settings || { autoCapitalize: false, blacklistedDomains: [] };
     currentLang = data.language || 'pt';
+    secretOptions = data.secretOptions || { revealed: false, highlightCorrections: false, correctionFlair: false };
     checkDomainBlock();
   });
 }
@@ -54,6 +58,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     checkDomainBlock();
   }
   if (changes.language) currentLang = changes.language.newValue || 'pt';
+  if (changes.secretOptions) secretOptions = changes.secretOptions.newValue || secretOptions;
 });
 
 loadSettings();
@@ -68,6 +73,145 @@ function recordCorrection() {
     stats.correctionsApplied = (stats.correctionsApplied || 0) + 1;
     chrome.storage.local.set({ cbStats: stats });
   });
+}
+
+// ---------------------------------------------------------------------------
+// Secret reward features
+// ---------------------------------------------------------------------------
+
+/**
+ * Lazily inject the CSS keyframe animations needed by the reward effects.
+ * Only runs once per document; uses an id-guard to avoid duplicates.
+ */
+function ensureContentStyles() {
+  if (document.getElementById('__cb_content_styles__')) return;
+  const s = document.createElement('style');
+  s.id = '__cb_content_styles__';
+  s.textContent =
+    '@keyframes __cb_flair_float__{' +
+    '0%{opacity:1;transform:translateY(0) scale(1) rotate(0deg)}' +
+    '100%{opacity:0;transform:translateY(-60px) scale(1.5) rotate(20deg)}}' +
+    '@keyframes __cb_word_flash__{' +
+    '0%{opacity:.7}100%{opacity:0}}';
+  (document.head || document.documentElement).appendChild(s);
+}
+
+/** Show a floating emoji burst near the element that was just corrected. */
+function showCorrectionFlair(element) {
+  if (!secretOptions.correctionFlair) return;
+  ensureContentStyles();
+  const rect = element.getBoundingClientRect();
+  const flair = document.createElement('div');
+  Object.assign(flair.style, {
+    position: 'fixed',
+    fontSize: '22px',
+    left: (rect.left + Math.random() * Math.max(rect.width - 30, 10)) + 'px',
+    top: (rect.top + Math.random() * Math.max(rect.height / 2, 10)) + 'px',
+    pointerEvents: 'none',
+    zIndex: '2147483647',
+    userSelect: 'none',
+    animation: '__cb_flair_float__ 0.8s ease-out forwards',
+  });
+  flair.textContent = FLAIR_OPTIONS[Math.floor(Math.random() * FLAIR_OPTIONS.length)];
+  document.body.appendChild(flair);
+  setTimeout(() => flair.remove(), 800);
+}
+
+/**
+ * Overlay a brief green highlight over the corrected word in an input/textarea.
+ * Uses the "mirror div" technique to measure the word's pixel position without
+ * altering the element's content or cursor.
+ */
+function highlightCorrectedWord(element, wordStart, wordLength) {
+  if (!secretOptions.highlightCorrections) return;
+  ensureContentStyles();
+
+  const cs = window.getComputedStyle(element);
+  const mirror = document.createElement('div');
+  [
+    'boxSizing', 'width',
+    'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+    'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
+    'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing',
+    'wordSpacing', 'tabSize', 'lineHeight',
+  ].forEach((p) => { mirror.style[p] = cs[p]; });
+
+  const elRect = element.getBoundingClientRect();
+  Object.assign(mirror.style, {
+    position: 'fixed',
+    top: elRect.top + 'px',
+    left: elRect.left + 'px',
+    visibility: 'hidden',
+    overflow: 'hidden',
+    height: element.offsetHeight + 'px',
+    whiteSpace: 'pre-wrap',
+    wordWrap: 'break-word',
+  });
+
+  const text = element.value;
+  const markEl = document.createElement('mark');
+  markEl.textContent = text.substring(wordStart, wordStart + wordLength);
+  mirror.appendChild(document.createTextNode(text.substring(0, wordStart)));
+  mirror.appendChild(markEl);
+  document.body.appendChild(mirror);
+  mirror.scrollTop = element.scrollTop;
+
+  const markRect = markEl.getBoundingClientRect();
+  mirror.remove();
+
+  if (markRect.width === 0 || markRect.height === 0) return;
+
+  const hl = document.createElement('div');
+  Object.assign(hl.style, {
+    position: 'fixed',
+    left: markRect.left + 'px',
+    top: markRect.top + 'px',
+    width: markRect.width + 'px',
+    height: markRect.height + 'px',
+    background: 'rgba(39,174,96,0.4)',
+    borderRadius: '2px',
+    pointerEvents: 'none',
+    zIndex: '2147483647',
+    animation: '__cb_word_flash__ 1.5s ease-out forwards',
+  });
+  document.body.appendChild(hl);
+  setTimeout(() => hl.remove(), 1500);
+}
+
+/**
+ * Same as highlightCorrectedWord but for a contenteditable text node.
+ * Uses the Range API to get the exact bounding rect of the word.
+ */
+function highlightCorrectedWordCE(node, wordStart, wordLength) {
+  if (!secretOptions.highlightCorrections) return;
+  ensureContentStyles();
+
+  const startOffset = Math.min(wordStart, node.textContent.length);
+  const endOffset = Math.min(wordStart + wordLength, node.textContent.length);
+  if (startOffset >= endOffset) return;
+
+  const range = document.createRange();
+  range.setStart(node, startOffset);
+  range.setEnd(node, endOffset);
+  const markRect = range.getBoundingClientRect();
+
+  if (markRect.width === 0 || markRect.height === 0) return;
+
+  const hl = document.createElement('div');
+  Object.assign(hl.style, {
+    position: 'fixed',
+    left: markRect.left + 'px',
+    top: markRect.top + 'px',
+    width: markRect.width + 'px',
+    height: markRect.height + 'px',
+    background: 'rgba(39,174,96,0.4)',
+    borderRadius: '2px',
+    pointerEvents: 'none',
+    zIndex: '2147483647',
+    animation: '__cb_word_flash__ 1.5s ease-out forwards',
+  });
+  document.body.appendChild(hl);
+  setTimeout(() => hl.remove(), 1500);
 }
 
 // ---------------------------------------------------------------------------
@@ -155,6 +299,8 @@ function correctInputElement(element) {
     applying = false;
   }
 
+  showCorrectionFlair(element);
+  highlightCorrectedWord(element, wordStart, correction.length);
   recordCorrection();
 }
 
@@ -210,6 +356,8 @@ function correctContentEditable(element) {
     applying = false;
   }
 
+  showCorrectionFlair(element);
+  highlightCorrectedWordCE(node, wordStart, correction.length);
   recordCorrection();
 }
 
