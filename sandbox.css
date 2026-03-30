@@ -545,13 +545,13 @@ textarea#testArea:focus {
   min-width: 0;
 }
 
-.xpbar-widget {
+#optXpBarRow .xpbar-widget {
   display: flex;
   align-items: center;
   gap: 14px;
 }
 
-.xpbar-widget[hidden] { display: none; }
+#optXpBarRow .xpbar-widget[hidden] { display: none; }
 
 .xpbar-track {
   flex: 1;
