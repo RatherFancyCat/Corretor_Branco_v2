@@ -28,7 +28,7 @@ const FLAIR_OPTIONS = ['✨', '🎉', '⭐', '💫', '✅'];
 
 function loadAll(callback) {
   chrome.storage.local.get(
-    ['wordMap', 'settings', 'language', 'secretOptions', 'cbStats', 'cbAchievements'],
+    ['wordMap', 'settings', 'language', 'secretOptions', 'cbStats', 'cbAchievements', 'theme'],
     (data) => {
       wordMap = data.wordMap || {};
       settings = data.settings || { autoCapitalize: false, blacklistedDomains: [] };
@@ -43,6 +43,7 @@ function loadAll(callback) {
       cbAchievements = data.cbAchievements || {};
       const lang = data.language || 'pt';
       I18n._lang = lang;
+      applyTheme(data.theme || 'light');
       if (callback) callback(lang);
     }
   );
@@ -50,6 +51,12 @@ function loadAll(callback) {
 
 function saveSecretOptions() {
   chrome.storage.local.set({ secretOptions });
+}
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light';
+  const btn = document.getElementById('headerThemeToggle');
+  if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -81,6 +88,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (changes.secretOptions) {
     secretOptions = changes.secretOptions.newValue || secretOptions;
     updateSecretUI();
+  }
+  if (changes.theme) {
+    applyTheme(changes.theme.newValue || 'light');
   }
 });
 
@@ -591,6 +601,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (xpBarWidget) xpBarWidget.hidden = !secretOptions.xpBar;
     if (xpBarDesc) xpBarDesc.hidden = !!secretOptions.xpBar;
     if (secretOptions.xpBar) updateXpBar();
+  });
+
+  // Header theme toggle
+  document.getElementById('headerThemeToggle').addEventListener('click', () => {
+    const isDark = document.documentElement.dataset.theme === 'dark';
+    const newTheme = isDark ? 'light' : 'dark';
+    applyTheme(newTheme);
+    chrome.storage.local.set({ theme: newTheme });
   });
 
   attachGoToOptions();

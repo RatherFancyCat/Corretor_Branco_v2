@@ -17,6 +17,7 @@ const TRANSLATIONS = {
     'popup-btn-manage': '\uD83D\uDCDD Gerir Palavras',
     'popup-btn-sandbox': '\uD83E\uDDEA Área de Teste',
     'popup-lang-label': 'Idioma',
+    'popup-theme-label': 'Tema',
 
     'opts-header-sub': 'Gere a sua lista de correções ortográficas',
     'opts-settings-h2': 'Definições',
@@ -137,6 +138,7 @@ const TRANSLATIONS = {
     'popup-btn-manage': '\uD83D\uDCDD Manage Words',
     'popup-btn-sandbox': '\uD83E\uDDEA Test Area',
     'popup-lang-label': 'Language',
+    'popup-theme-label': 'Theme',
 
     'opts-header-sub': 'Manage your spelling correction list',
     'opts-settings-h2': 'Settings',
@@ -255,6 +257,7 @@ const TRANSLATIONS = {
     'popup-btn-manage': '\uD83D\uDCDD Gestionar Palabras',
     'popup-btn-sandbox': '\uD83E\uDDEA Área de Prueba',
     'popup-lang-label': 'Idioma',
+    'popup-theme-label': 'Tema',
 
     'opts-header-sub': 'Gestione su lista de correcciones ortográficas',
     'opts-settings-h2': 'Configuración',
@@ -375,6 +378,7 @@ const TRANSLATIONS = {
     'popup-btn-manage': '\uD83D\uDCDD Gérer les mots',
     'popup-btn-sandbox': '\uD83E\uDDEA Zone de test',
     'popup-lang-label': 'Langue',
+    'popup-theme-label': 'Thème',
 
     'opts-header-sub': 'Gérez votre liste de corrections orthographiques',
     'opts-settings-h2': 'Paramètres',
@@ -493,6 +497,7 @@ const TRANSLATIONS = {
     'popup-btn-manage': '\uD83D\uDCDD Wörter verwalten',
     'popup-btn-sandbox': '\uD83E\uDDEA Testbereich',
     'popup-lang-label': 'Sprache',
+    'popup-theme-label': 'Design',
 
     'opts-header-sub': 'Verwalten Sie Ihre Rechtschreibkorrekturen',
     'opts-settings-h2': 'Einstellungen',
@@ -613,6 +618,7 @@ const TRANSLATIONS = {
     'popup-btn-manage': '\uD83D\uDCDD 管理词汇',
     'popup-btn-sandbox': '\uD83E\uDDEA 测试区域',
     'popup-lang-label': '语言',
+    'popup-theme-label': '主题',
 
     'opts-header-sub': '管理您的拼写更正列表',
     'opts-settings-h2': '设置',
