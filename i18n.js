@@ -98,6 +98,7 @@ const TRANSLATIONS = {
     // Achievements section in options
     'opts-achievements-h2':         'Conquistas',
     'opts-achievements-desc':       'Acompanha e vê os teus marcos de correção.',
+    'opts-view-rewards-btn':        '🎁 Ver as Minhas Recompensas',
 
     // Achievement names and descriptions
     'ach-first-word-added-name':    'Primeiros Passos',
@@ -213,6 +214,7 @@ const TRANSLATIONS = {
     // Achievements section in options
     'opts-achievements-h2':         'Achievements',
     'opts-achievements-desc':       'Track and view your correction milestones.',
+    'opts-view-rewards-btn':        '🎁 View My Rewards',
 
     // Achievement names and descriptions
     'ach-first-word-added-name':    'First Steps',
@@ -326,6 +328,7 @@ const TRANSLATIONS = {
     // Achievements section in options
     'opts-achievements-h2':         'Logros',
     'opts-achievements-desc':       'Siga y visualice sus hitos de corrección.',
+    'opts-view-rewards-btn':        '🎁 Ver Mis Recompensas',
 
     // Achievement names and descriptions
     'ach-first-word-added-name':    'Primeros Pasos',
@@ -441,6 +444,7 @@ const TRANSLATIONS = {
     // Achievements section in options
     'opts-achievements-h2':         'Succès',
     'opts-achievements-desc':       'Suivez et consultez vos jalons de correction.',
+    'opts-view-rewards-btn':        '🎁 Voir mes récompenses',
 
     // Achievement names and descriptions
     'ach-first-word-added-name':    'Premiers pas',
@@ -554,6 +558,7 @@ const TRANSLATIONS = {
     // Achievements section in options
     'opts-achievements-h2':         'Erfolge',
     'opts-achievements-desc':       'Verfolge und sieh deine Korrekturmeilensteine.',
+    'opts-view-rewards-btn':        '🎁 Meine Belohnungen anzeigen',
 
     // Achievement names and descriptions
     'ach-first-word-added-name':    'Erste Schritte',
@@ -669,6 +674,7 @@ const TRANSLATIONS = {
     // Achievements section in options
     'opts-achievements-h2':         '成就',
     'opts-achievements-desc':       '跟踪并查看您的更正里程碑。',
+    'opts-view-rewards-btn':        '🎁 查看我的奖励',
 
     // Achievement names and descriptions
     'ach-first-word-added-name':    '第一步',

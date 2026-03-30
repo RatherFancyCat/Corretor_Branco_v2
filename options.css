@@ -370,6 +370,8 @@ tr:hover td { background: #fafbff; }
   background: #fafafa;
 }
 
+#viewRewardsBtn { margin-right: auto; }
+
 .modal-footer .btn-danger:hover { background: #c83434; }
 
 .achievements-list {

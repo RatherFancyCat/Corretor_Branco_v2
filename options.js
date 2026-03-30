@@ -362,6 +362,10 @@ function renderAchievements() {
   }
 
   list.innerHTML = html;
+
+  // Show the "View My Rewards" button only when at least one reward-bearing achievement is unlocked
+  const anyRewardUnlocked = ACHIEVEMENT_DEFINITIONS.some((d) => d.reward && cbAchievements[d.id]);
+  document.getElementById('viewRewardsBtn').hidden = !anyRewardUnlocked;
 }
 
 function openAchievementsModal() {
@@ -383,6 +387,9 @@ function resetAchievements() {
 }
 
 document.getElementById('viewAchievementsBtn').addEventListener('click', openAchievementsModal);
+document.getElementById('viewRewardsBtn').addEventListener('click', () => {
+  window.open(chrome.runtime.getURL('sandbox.html'), '_blank');
+});
 document.getElementById('closeAchievementsBtn').addEventListener('click', closeAchievementsModal);
 document.getElementById('resetAchievementsBtn').addEventListener('click', resetAchievements);
 document.getElementById('achievementsModal').addEventListener('click', (e) => {

@@ -430,6 +430,15 @@ function updateSecretUI() {
 
   optHighlight.checked = !!secretOptions.highlightCorrections;
   optFlair.checked = !!secretOptions.correctionFlair;
+
+  // Show each reward row only if its corresponding achievement has been earned
+  const highlightEarned = ACHIEVEMENT_DEFINITIONS.some((d) => d.reward === 'highlight' && cbAchievements[d.id]);
+  const flairEarned = ACHIEVEMENT_DEFINITIONS.some((d) => d.reward === 'flair' && cbAchievements[d.id]);
+
+  const highlightRow = document.getElementById('optHighlightRow');
+  const flairRow = document.getElementById('optFlairRow');
+  if (highlightRow) highlightRow.hidden = !highlightEarned;
+  if (flairRow) flairRow.hidden = !flairEarned;
 }
 
 // ---------------------------------------------------------------------------
