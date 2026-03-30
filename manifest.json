@@ -5,7 +5,8 @@
   "description": "Corrige erros ortográficos em tempo real com base numa lista de palavras personalizada.",
   "permissions": [
     "storage",
-    "tabs"
+    "tabs",
+    "contextMenus"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -19,6 +20,7 @@
         "<all_urls>"
       ],
       "js": [
+        "i18n.js",
         "content.js"
       ],
       "all_frames": true,
