@@ -74,13 +74,22 @@
       </div>
       <p class="secret-subtitle" data-i18n="secret-panel-subtitle">You unlocked these features through your achievements!</p>
       <div class="secret-opts">
-        <label class="secret-opt" id="optCursorLocatorRow" hidden>
-          <input type="checkbox" id="optCursorLocator">
-          <div>
-            <strong data-i18n="secret-opt-cursorlocator-name">🎯 Cursor Locator</strong>
-            <span data-i18n="secret-opt-cursorlocator-desc">Press Alt+Q to show exactly where you are typing on the page</span>
+        <div id="optCursorLocatorRow" hidden>
+          <label class="secret-opt">
+            <input type="checkbox" id="optCursorLocator">
+            <div>
+              <strong data-i18n="secret-opt-cursorlocator-name">🎯 Cursor Locator</strong>
+              <span data-i18n="secret-opt-cursorlocator-desc">Press the configured keybind to show exactly where you are typing on the page</span>
+            </div>
+          </label>
+          <div id="cursorLocatorKeyRow" class="secret-keybind-row" hidden>
+            <span class="secret-keybind-label" data-i18n="secret-opt-cursorlocator-keybind-label">Keybind</span>
+            <div class="secret-keybind-widget">
+              <input type="text" id="cursorLocatorKeyInput" class="secret-keybind-input" readonly value="Alt+Q">
+              <button id="cursorLocatorRecordBtn" class="btn btn-sm btn-secondary" data-i18n="secret-opt-cursorlocator-record-btn">Record</button>
+            </div>
           </div>
-        </label>
+        </div>
         <label class="secret-opt" id="optHighlightRow" hidden>
           <input type="checkbox" id="optHighlight">
           <div>

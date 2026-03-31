@@ -474,6 +474,47 @@ textarea#testArea:focus {
   color: rgba(232, 232, 240, 0.55);
 }
 
+/* ---- Cursor locator keybind row ---- */
+.secret-keybind-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 4px 12px 10px;
+}
+
+.secret-keybind-label {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: rgba(232, 232, 240, 0.55);
+}
+
+.secret-keybind-widget {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.secret-keybind-input {
+  width: 100px;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: monospace;
+  background: rgba(0, 0, 0, 0.3);
+  cursor: default;
+  outline: none;
+  text-align: center;
+  color: #e8e8f0;
+}
+
+.secret-keybind-input.recording {
+  border-color: #a78bfa;
+  background: rgba(167, 139, 250, 0.15);
+  color: #a78bfa;
+}
+
 #openAchievementsBtn {
   margin-top: 14px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

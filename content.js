@@ -108,8 +108,8 @@ document.addEventListener('keydown', (e) => {
     }
   }
 
-  // Cursor locator Alt+Q keybind – works in any text input on any page
-  if (secretOptions.cursorLocator && matchesKeybind(e, 'Alt+Q')) {
+  // Cursor locator keybind – works in any text input on any page
+  if (secretOptions.cursorLocator && matchesKeybind(e, secretOptions.cursorLocatorKey || 'Alt+Q')) {
     const el = document.activeElement;
     if (el) {
       const isTextInput =

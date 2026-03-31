@@ -7,6 +7,8 @@ let applying = false;
 // Flag to suppress auto-capitalisation for the current sentence (mirrors content.js)
 let skipCapForThisSentence = false;
 
+const DEFAULT_CURSOR_LOCATOR_KEY = 'Alt+Q';
+
 // Secret options state
 let secretOptions = {
   revealed: false,
@@ -15,6 +17,7 @@ let secretOptions = {
   xpBar: false,
   xpBarXp: 0,
   cursorLocator: false,
+  cursorLocatorKey: DEFAULT_CURSOR_LOCATOR_KEY,
 };
 let cbStats = { wordsAdded: 0, correctionsApplied: 0 };
 let cbAchievements = {};
@@ -53,6 +56,22 @@ function matchesKeybind(event, keybindStr) {
   );
 }
 
+/**
+ * Format a KeyboardEvent into a human-readable keybind string like "Alt+Q".
+ * Returns null when only modifier keys are pressed (no main key yet).
+ */
+function formatKeybind(event) {
+  const parts = [];
+  if (event.ctrlKey)  parts.push('Ctrl');
+  if (event.altKey)   parts.push('Alt');
+  if (event.shiftKey) parts.push('Shift');
+  if (event.metaKey)  parts.push('Meta');
+  const key = event.key;
+  if (['Control', 'Alt', 'Shift', 'Meta'].includes(key)) return null;
+  parts.push(key.length === 1 ? key.toUpperCase() : key);
+  return parts.join('+');
+}
+
 function loadAll(callback) {
   chrome.storage.local.get(
     ['wordMap', 'settings', 'language', 'secretOptions', 'cbStats', 'cbAchievements', 'theme'],
@@ -66,6 +85,7 @@ function loadAll(callback) {
         xpBar: false,
         xpBarXp: 0,
         cursorLocator: false,
+        cursorLocatorKey: DEFAULT_CURSOR_LOCATOR_KEY,
       };
       cbStats = data.cbStats || { wordsAdded: 0, correctionsApplied: 0 };
       cbAchievements = data.cbAchievements || {};
@@ -639,6 +659,12 @@ function updateSecretUI() {
   if (xpBarRow) xpBarRow.hidden = !xpBarEarned;
   if (cursorLocatorRow) cursorLocatorRow.hidden = !cursorLocatorEarned;
 
+  // Show/hide and hydrate the cursor locator keybind row
+  const cursorLocatorKeyRow = document.getElementById('cursorLocatorKeyRow');
+  const cursorLocatorKeyInput = document.getElementById('cursorLocatorKeyInput');
+  if (cursorLocatorKeyRow) cursorLocatorKeyRow.hidden = !secretOptions.cursorLocator;
+  if (cursorLocatorKeyInput) cursorLocatorKeyInput.value = secretOptions.cursorLocatorKey || DEFAULT_CURSOR_LOCATOR_KEY;
+
   // Show/hide the XP bar widget based on whether the option is enabled
   const xpBarWidget = document.getElementById('xpBarWidget');
   const xpBarDesc = document.getElementById('xpBarDesc');
@@ -684,7 +710,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Cursor locator Alt+Q keybind
-    if (secretOptions.cursorLocator && matchesKeybind(e, 'Alt+Q')) {
+    if (secretOptions.cursorLocator && matchesKeybind(e, secretOptions.cursorLocatorKey || DEFAULT_CURSOR_LOCATOR_KEY)) {
       showCursorLocatorSandbox();
       e.preventDefault();
     }
@@ -738,7 +764,48 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('optCursorLocator').addEventListener('change', (e) => {
     secretOptions.cursorLocator = e.target.checked;
+    const cursorLocatorKeyRow = document.getElementById('cursorLocatorKeyRow');
+    if (cursorLocatorKeyRow) cursorLocatorKeyRow.hidden = !e.target.checked;
     saveSecretOptions();
+  });
+
+  // Cursor locator keybind recording
+  let cursorLocatorRecording = false;
+
+  document.getElementById('cursorLocatorRecordBtn').addEventListener('click', () => {
+    cursorLocatorRecording = !cursorLocatorRecording;
+    const btn = document.getElementById('cursorLocatorRecordBtn');
+    const input = document.getElementById('cursorLocatorKeyInput');
+    if (cursorLocatorRecording) {
+      btn.textContent = I18n.t('secret-opt-cursorlocator-recording');
+      input.value = '…';
+      input.classList.add('recording');
+    } else {
+      btn.textContent = I18n.t('secret-opt-cursorlocator-record-btn');
+      input.value = secretOptions.cursorLocatorKey || DEFAULT_CURSOR_LOCATOR_KEY;
+      input.classList.remove('recording');
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (!cursorLocatorRecording) return;
+    e.preventDefault();
+    if (e.key === 'Escape') {
+      cursorLocatorRecording = false;
+      document.getElementById('cursorLocatorRecordBtn').textContent = I18n.t('secret-opt-cursorlocator-record-btn');
+      document.getElementById('cursorLocatorKeyInput').value = secretOptions.cursorLocatorKey || DEFAULT_CURSOR_LOCATOR_KEY;
+      document.getElementById('cursorLocatorKeyInput').classList.remove('recording');
+    } else {
+      const formatted = formatKeybind(e);
+      if (formatted) {
+        secretOptions.cursorLocatorKey = formatted;
+        document.getElementById('cursorLocatorKeyInput').value = formatted;
+        cursorLocatorRecording = false;
+        document.getElementById('cursorLocatorRecordBtn').textContent = I18n.t('secret-opt-cursorlocator-record-btn');
+        document.getElementById('cursorLocatorKeyInput').classList.remove('recording');
+        saveSecretOptions();
+      }
+    }
   });
 
   // Header theme toggle
