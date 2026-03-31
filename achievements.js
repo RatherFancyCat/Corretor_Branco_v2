@@ -31,8 +31,8 @@ const ACHIEVEMENT_DEFINITIONS = [
   {
     id: 'corrections-5',
     name: 'Getting Started',
-    desc: 'Have 5 words corrected',
-    reward: null,
+    desc: 'Have 5 words corrected — unlocks Cursor Locator',
+    reward: 'cursorlocator',
     check: (s) => s.correctionsApplied >= 5,
   },
   {

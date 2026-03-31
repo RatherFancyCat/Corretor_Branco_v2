@@ -14,6 +14,7 @@ let secretOptions = {
   correctionFlair: false,
   xpBar: false,
   xpBarXp: 0,
+  cursorLocator: false,
 };
 let cbStats = { wordsAdded: 0, correctionsApplied: 0 };
 let cbAchievements = {};
@@ -64,6 +65,7 @@ function loadAll(callback) {
         correctionFlair: false,
         xpBar: false,
         xpBarXp: 0,
+        cursorLocator: false,
       };
       cbStats = data.cbStats || { wordsAdded: 0, correctionsApplied: 0 };
       cbAchievements = data.cbAchievements || {};
@@ -331,6 +333,7 @@ function checkEasterEgg() {
   secretOptions.highlightCorrections = true;
   secretOptions.correctionFlair = true;
   secretOptions.xpBar = true;
+  secretOptions.cursorLocator = true;
   secretOptions.revealed = true;
   saveSecretOptions();
 
@@ -417,6 +420,67 @@ function highlightCorrectedWord(element, wordStart, wordLength) {
   setTimeout(() => hl.remove(), 1500);
 }
 
+/**
+ * Show a beacon overlay pointing at the cursor's current position inside
+ * the test-area textarea. Triggered by the Tab+Q keybind.
+ */
+function showCursorLocatorSandbox() {
+  if (!secretOptions.cursorLocator) return;
+  const element = document.getElementById('testArea');
+  const wrapper = element.closest('.textarea-wrapper');
+  if (!wrapper) return;
+
+  const cs = window.getComputedStyle(element);
+  const mirror = document.createElement('div');
+  [
+    'boxSizing', 'width',
+    'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+    'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
+    'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing',
+    'wordSpacing', 'tabSize', 'lineHeight',
+  ].forEach((p) => { mirror.style[p] = cs[p]; });
+  mirror.style.position = 'absolute';
+  mirror.style.top = '0';
+  mirror.style.left = '0';
+  mirror.style.visibility = 'hidden';
+  mirror.style.overflow = 'hidden';
+  mirror.style.height = element.offsetHeight + 'px';
+  mirror.style.whiteSpace = 'pre-wrap';
+  mirror.style.wordWrap = 'break-word';
+
+  const pos = element.selectionStart || 0;
+  const cursorSpan = document.createElement('span');
+  cursorSpan.textContent = '\u200B'; // zero-width space marks cursor position
+  mirror.appendChild(document.createTextNode(element.value.substring(0, pos)));
+  mirror.appendChild(cursorSpan);
+  wrapper.appendChild(mirror);
+  mirror.scrollTop = element.scrollTop;
+
+  const spanRect = cursorSpan.getBoundingClientRect();
+  const wrapperRect = wrapper.getBoundingClientRect();
+  mirror.remove();
+
+  if (spanRect.height === 0) return;
+
+  const x = spanRect.left - wrapperRect.left;
+  const y = spanRect.top - wrapperRect.top;
+
+  const arrow = document.createElement('div');
+  arrow.className = 'cursor-locator-arrow';
+  arrow.textContent = '▼';
+  arrow.style.left = (x - 10) + 'px';
+  arrow.style.top = (y - 28) + 'px';
+  wrapper.appendChild(arrow);
+
+  const ring = document.createElement('div');
+  ring.className = 'cursor-locator-ring';
+  ring.style.left = (x - 10) + 'px';
+  ring.style.top = (y - 2) + 'px';
+  wrapper.appendChild(ring);
+
+  setTimeout(() => { arrow.remove(); ring.remove(); }, 2500);
+}
+
 function incrementCorrections() {
   chrome.storage.local.get('cbStats', (data) => {
     const stats = data.cbStats || { wordsAdded: 0, correctionsApplied: 0 };
@@ -493,6 +557,8 @@ function checkAndSaveAchievements() {
         shouldReveal = true;
       } else if (def.reward === 'xpbar') {
         shouldReveal = true;
+      } else if (def.reward === 'cursorlocator') {
+        shouldReveal = true;
       }
 
       setTimeout(() => showAchievementToast(def), i * 400);
@@ -550,23 +616,28 @@ function updateSecretUI() {
   const optHighlight = document.getElementById('optHighlight');
   const optFlair = document.getElementById('optFlair');
   const optXpBar = document.getElementById('optXpBar');
+  const optCursorLocator = document.getElementById('optCursorLocator');
   if (!optHighlight) return; // DOM not ready yet
 
   optHighlight.checked = !!secretOptions.highlightCorrections;
   optFlair.checked = !!secretOptions.correctionFlair;
   if (optXpBar) optXpBar.checked = !!secretOptions.xpBar;
+  if (optCursorLocator) optCursorLocator.checked = !!secretOptions.cursorLocator;
 
   // Show each reward row only if its corresponding achievement has been earned
   const highlightEarned = ACHIEVEMENT_DEFINITIONS.some((d) => d.reward === 'highlight' && cbAchievements[d.id]);
   const flairEarned = ACHIEVEMENT_DEFINITIONS.some((d) => d.reward === 'flair' && cbAchievements[d.id]);
   const xpBarEarned = ACHIEVEMENT_DEFINITIONS.some((d) => d.reward === 'xpbar' && cbAchievements[d.id]);
+  const cursorLocatorEarned = ACHIEVEMENT_DEFINITIONS.some((d) => d.reward === 'cursorlocator' && cbAchievements[d.id]);
 
   const highlightRow = document.getElementById('optHighlightRow');
   const flairRow = document.getElementById('optFlairRow');
   const xpBarRow = document.getElementById('optXpBarRow');
+  const cursorLocatorRow = document.getElementById('optCursorLocatorRow');
   if (highlightRow) highlightRow.hidden = !highlightEarned;
   if (flairRow) flairRow.hidden = !flairEarned;
   if (xpBarRow) xpBarRow.hidden = !xpBarEarned;
+  if (cursorLocatorRow) cursorLocatorRow.hidden = !cursorLocatorEarned;
 
   // Show/hide the XP bar widget based on whether the option is enabled
   const xpBarWidget = document.getElementById('xpBarWidget');
@@ -601,13 +672,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const testArea = document.getElementById('testArea');
 
-  // Skip-cap keybind listener on the test area
+  // Track Tab-key-held state for the Tab+Q cursor locator keybind
+  let sandboxTabHeld = false;
+
+  // Skip-cap keybind + Tab+Q cursor locator listener on the test area
   testArea.addEventListener('keydown', (e) => {
-    if (!settings.autoCapitalize || !settings.skipCapEnabled) return;
-    if (matchesKeybind(e, settings.skipCapKey || 'Alt+K')) {
-      skipCapForThisSentence = true;
-      e.preventDefault();
+    // Skip-capitalisation keybind
+    if (settings.autoCapitalize && settings.skipCapEnabled) {
+      if (matchesKeybind(e, settings.skipCapKey || 'Alt+K')) {
+        skipCapForThisSentence = true;
+        e.preventDefault();
+        return;
+      }
     }
+
+    // Cursor locator Tab+Q keybind
+    if (secretOptions.cursorLocator) {
+      if (e.key === 'Tab') {
+        sandboxTabHeld = true;
+        e.preventDefault(); // prevent focus change / tab insertion
+      } else if ((e.key === 'q' || e.key === 'Q') && sandboxTabHeld) {
+        showCursorLocatorSandbox();
+        e.preventDefault();
+        sandboxTabHeld = false;
+      } else {
+        sandboxTabHeld = false;
+      }
+    }
+  });
+
+  testArea.addEventListener('keyup', (e) => {
+    if (e.key === 'Tab') sandboxTabHeld = false;
   });
 
   testArea.addEventListener('input', (event) => {
@@ -655,6 +750,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (xpBarWidget) xpBarWidget.hidden = !secretOptions.xpBar;
     if (xpBarDesc) xpBarDesc.hidden = !!secretOptions.xpBar;
     if (secretOptions.xpBar) updateXpBar();
+  });
+  document.getElementById('optCursorLocator').addEventListener('change', (e) => {
+    secretOptions.cursorLocator = e.target.checked;
+    saveSecretOptions();
   });
 
   // Header theme toggle

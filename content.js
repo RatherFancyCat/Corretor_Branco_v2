@@ -16,6 +16,9 @@ let secretOptions = { revealed: false, highlightCorrections: false, correctionFl
 // Set by the user's keybind; cleared on the next sentence-ending character.
 let skipCapForThisSentence = false;
 
+// Track Tab-key-held state for the Tab+Q cursor locator keybind.
+let tabHeld = false;
+
 // Characters that mark the end of a word
 // PUNCT_CLASS is the non-whitespace subset; SEPARATOR_RE also includes \s.
 const PUNCT_CLASS = ".,!?;:'\"()\\[\\]{}\\-\\/\\\\«»\u201C\u201D\u2018\u2019";
@@ -94,15 +97,48 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 loadSettings();
 
-// Listen for the skip-capitalisation keybind on the document.
+// Listen for the skip-capitalisation keybind and the Tab+Q cursor locator keybind.
 // Uses capture so it fires even when a text field has focus.
 document.addEventListener('keydown', (e) => {
   if (!enabled || blockedByDomain) return;
-  if (!settings.autoCapitalize || !settings.skipCapEnabled) return;
-  if (matchesKeybind(e, settings.skipCapKey || 'Alt+K')) {
-    skipCapForThisSentence = true;
-    e.preventDefault();
+
+  // Skip-capitalisation keybind
+  if (settings.autoCapitalize && settings.skipCapEnabled) {
+    if (matchesKeybind(e, settings.skipCapKey || 'Alt+K')) {
+      skipCapForThisSentence = true;
+      e.preventDefault();
+      return;
+    }
   }
+
+  // Cursor locator Tab+Q keybind
+  if (secretOptions.cursorLocator) {
+    const el = document.activeElement;
+    if (el) {
+      const isTextarea = el.tagName === 'TEXTAREA';
+      const isCE = !!el.isContentEditable;
+      // Only intercept Tab in textareas and contenteditables; in regular <input>
+      // elements Tab navigates between form fields and should be left alone.
+      if (isTextarea || isCE) {
+        if (e.key === 'Tab') {
+          tabHeld = true;
+          e.preventDefault(); // prevent tab-character insertion / focus change
+        } else if ((e.key === 'q' || e.key === 'Q') && tabHeld) {
+          showCursorLocator(el);
+          e.preventDefault();
+          tabHeld = false;
+        } else {
+          tabHeld = false;
+        }
+        return;
+      }
+    }
+  }
+  tabHeld = false;
+}, true);
+
+document.addEventListener('keyup', (e) => {
+  if (e.key === 'Tab') tabHeld = false;
 }, true);
 
 // ---------------------------------------------------------------------------
@@ -134,7 +170,14 @@ function ensureContentStyles() {
     '0%{opacity:1;transform:translateY(0) scale(1) rotate(0deg)}' +
     '100%{opacity:0;transform:translateY(-60px) scale(1.5) rotate(20deg)}}' +
     '@keyframes __cb_word_flash__{' +
-    '0%{opacity:.7}100%{opacity:0}}';
+    '0%{opacity:.7}100%{opacity:0}}' +
+    '@keyframes __cb_cursor_beacon__{' +
+    '0%{opacity:1;transform:translateY(0)}' +
+    '60%{opacity:1;transform:translateY(-5px)}' +
+    '100%{opacity:0;transform:translateY(-14px)}}' +
+    '@keyframes __cb_cursor_ring__{' +
+    '0%{transform:scale(1);opacity:.9}' +
+    '100%{transform:scale(2.8);opacity:0}}';
   (document.head || document.documentElement).appendChild(s);
 }
 
@@ -254,6 +297,95 @@ function highlightCorrectedWordCE(node, wordStart, wordLength) {
   });
   document.body.appendChild(hl);
   setTimeout(() => hl.remove(), 1500);
+}
+
+/**
+ * Show a beacon pointing at the cursor's current position in the given element.
+ * Triggered by the Tab+Q keybind when the cursor locator reward is active.
+ */
+function showCursorLocator(el) {
+  if (!secretOptions.cursorLocator) return;
+  ensureContentStyles();
+
+  let cursorRect = null;
+
+  if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+    const cs = window.getComputedStyle(el);
+    const mirror = document.createElement('div');
+    [
+      'boxSizing', 'width',
+      'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+      'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
+      'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing',
+      'wordSpacing', 'tabSize', 'lineHeight',
+    ].forEach((p) => { mirror.style[p] = cs[p]; });
+
+    const elRect = el.getBoundingClientRect();
+    Object.assign(mirror.style, {
+      position: 'fixed',
+      top: elRect.top + 'px',
+      left: elRect.left + 'px',
+      visibility: 'hidden',
+      overflow: 'hidden',
+      height: el.offsetHeight + 'px',
+      whiteSpace: 'pre-wrap',
+      wordWrap: 'break-word',
+    });
+
+    const pos = el.selectionStart || 0;
+    const cursorSpan = document.createElement('span');
+    cursorSpan.textContent = '\u200B'; // zero-width space marks cursor position
+    mirror.appendChild(document.createTextNode(el.value.substring(0, pos)));
+    mirror.appendChild(cursorSpan);
+    document.body.appendChild(mirror);
+    mirror.scrollTop = el.scrollTop;
+    cursorRect = cursorSpan.getBoundingClientRect();
+    mirror.remove();
+  } else if (el.isContentEditable) {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0).cloneRange();
+      range.collapse(true);
+      cursorRect = range.getBoundingClientRect();
+    }
+  }
+
+  if (!cursorRect || cursorRect.height === 0) return;
+
+  const x = cursorRect.left;
+  const y = cursorRect.top;
+
+  const arrow = document.createElement('div');
+  Object.assign(arrow.style, {
+    position: 'fixed',
+    left: (x - 10) + 'px',
+    top: (y - 28) + 'px',
+    fontSize: '20px',
+    color: '#4A90D9',
+    pointerEvents: 'none',
+    zIndex: '2147483647',
+    userSelect: 'none',
+    animation: '__cb_cursor_beacon__ 2.5s ease-out forwards',
+  });
+  arrow.textContent = '▼';
+  document.body.appendChild(arrow);
+
+  const ring = document.createElement('div');
+  Object.assign(ring.style, {
+    position: 'fixed',
+    left: (x - 10) + 'px',
+    top: (y - 2) + 'px',
+    width: '20px',
+    height: '20px',
+    borderRadius: '50%',
+    border: '2px solid #4A90D9',
+    pointerEvents: 'none',
+    zIndex: '2147483647',
+    animation: '__cb_cursor_ring__ 2.5s ease-out forwards',
+  });
+  document.body.appendChild(ring);
+
+  setTimeout(() => { arrow.remove(); ring.remove(); }, 2500);
 }
 
 // ---------------------------------------------------------------------------
