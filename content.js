@@ -16,9 +16,6 @@ let secretOptions = { revealed: false, highlightCorrections: false, correctionFl
 // Set by the user's keybind; cleared on the next sentence-ending character.
 let skipCapForThisSentence = false;
 
-// Track Tab-key-held state for the Tab+Q cursor locator keybind.
-let tabHeld = false;
-
 // Characters that mark the end of a word
 // PUNCT_CLASS is the non-whitespace subset; SEPARATOR_RE also includes \s.
 const PUNCT_CLASS = ".,!?;:'\"()\\[\\]{}\\-\\/\\\\«»\u201C\u201D\u2018\u2019";
@@ -97,7 +94,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 loadSettings();
 
-// Listen for the skip-capitalisation keybind and the Tab+Q cursor locator keybind.
+// Listen for the skip-capitalisation keybind and the Alt+Q cursor locator keybind.
 // Uses capture so it fires even when a text field has focus.
 document.addEventListener('keydown', (e) => {
   if (!enabled || blockedByDomain) return;
@@ -111,34 +108,19 @@ document.addEventListener('keydown', (e) => {
     }
   }
 
-  // Cursor locator Tab+Q keybind
-  if (secretOptions.cursorLocator) {
+  // Cursor locator Alt+Q keybind – works in any text input on any page
+  if (secretOptions.cursorLocator && matchesKeybind(e, 'Alt+Q')) {
     const el = document.activeElement;
     if (el) {
-      const isTextarea = el.tagName === 'TEXTAREA';
-      const isCE = !!el.isContentEditable;
-      // Only intercept Tab in textareas and contenteditables; in regular <input>
-      // elements Tab navigates between form fields and should be left alone.
-      if (isTextarea || isCE) {
-        if (e.key === 'Tab') {
-          tabHeld = true;
-          e.preventDefault(); // prevent tab-character insertion / focus change
-        } else if ((e.key === 'q' || e.key === 'Q') && tabHeld) {
-          showCursorLocator(el);
-          e.preventDefault();
-          tabHeld = false;
-        } else {
-          tabHeld = false;
-        }
-        return;
+      const isTextInput =
+        ((el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') && el.type !== 'password') ||
+        !!el.isContentEditable;
+      if (isTextInput) {
+        showCursorLocator(el);
+        e.preventDefault();
       }
     }
   }
-  tabHeld = false;
-}, true);
-
-document.addEventListener('keyup', (e) => {
-  if (e.key === 'Tab') tabHeld = false;
 }, true);
 
 // ---------------------------------------------------------------------------
@@ -301,7 +283,7 @@ function highlightCorrectedWordCE(node, wordStart, wordLength) {
 
 /**
  * Show a beacon pointing at the cursor's current position in the given element.
- * Triggered by the Tab+Q keybind when the cursor locator reward is active.
+ * Triggered by the Alt+Q keybind when the cursor locator reward is active.
  */
 function showCursorLocator(el) {
   if (!secretOptions.cursorLocator) return;

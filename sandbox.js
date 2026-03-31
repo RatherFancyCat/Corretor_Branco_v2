@@ -422,7 +422,7 @@ function highlightCorrectedWord(element, wordStart, wordLength) {
 
 /**
  * Show a beacon overlay pointing at the cursor's current position inside
- * the test-area textarea. Triggered by the Tab+Q keybind.
+ * the test-area textarea. Triggered by the Alt+Q keybind.
  */
 function showCursorLocatorSandbox() {
   if (!secretOptions.cursorLocator) return;
@@ -672,10 +672,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const testArea = document.getElementById('testArea');
 
-  // Track Tab-key-held state for the Tab+Q cursor locator keybind
-  let sandboxTabHeld = false;
-
-  // Skip-cap keybind + Tab+Q cursor locator listener on the test area
+  // Skip-cap keybind + Alt+Q cursor locator listener on the test area
   testArea.addEventListener('keydown', (e) => {
     // Skip-capitalisation keybind
     if (settings.autoCapitalize && settings.skipCapEnabled) {
@@ -686,23 +683,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // Cursor locator Tab+Q keybind
-    if (secretOptions.cursorLocator) {
-      if (e.key === 'Tab') {
-        sandboxTabHeld = true;
-        e.preventDefault(); // prevent focus change / tab insertion
-      } else if ((e.key === 'q' || e.key === 'Q') && sandboxTabHeld) {
-        showCursorLocatorSandbox();
-        e.preventDefault();
-        sandboxTabHeld = false;
-      } else {
-        sandboxTabHeld = false;
-      }
+    // Cursor locator Alt+Q keybind
+    if (secretOptions.cursorLocator && matchesKeybind(e, 'Alt+Q')) {
+      showCursorLocatorSandbox();
+      e.preventDefault();
     }
-  });
-
-  testArea.addEventListener('keyup', (e) => {
-    if (e.key === 'Tab') sandboxTabHeld = false;
   });
 
   testArea.addEventListener('input', (event) => {
