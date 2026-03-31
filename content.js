@@ -9,6 +9,13 @@ let currentLang = 'pt';
 // Flag to prevent re-entrant corrections when we programmatically set element.value
 let applying = false;
 
+const FLAIR_OPTIONS = ['✨', '🎉', '⭐', '💫', '✅'];
+let secretOptions = { revealed: false, highlightCorrections: false, correctionFlair: false, wordTrail: false, wordTrailColor: '#4C90D6', wordTrailRgb: false };
+
+// Flag to suppress auto-capitalisation for the current sentence.
+// Set by the user's keybind; cleared on the next sentence-ending character.
+let skipCapForThisSentence = false;
+
 // Characters that mark the end of a word
 // PUNCT_CLASS is the non-whitespace subset; SEPARATOR_RE also includes \s.
 const PUNCT_CLASS = ".,!?;:'\"()\\[\\]{}\\-\\/\\\\«»\u201C\u201D\u2018\u2019";
@@ -27,6 +34,30 @@ const SENTENCE_END_RE = /[.!?]/;
 // Storage
 // ---------------------------------------------------------------------------
 
+/**
+ * Returns true when a KeyboardEvent matches a stored keybind string
+ * like "Alt+K", "Ctrl+Shift+F", etc.
+ */
+function matchesKeybind(event, keybindStr) {
+  if (!keybindStr) return false;
+  const parts = keybindStr.split('+');
+  const mainKey = parts[parts.length - 1];
+  const needsAlt   = parts.includes('Alt');
+  const needsCtrl  = parts.includes('Ctrl');
+  const needsShift = parts.includes('Shift');
+  const needsMeta  = parts.includes('Meta');
+  // Normalise single characters to upper-case for case-insensitive comparison
+  const eventKey = event.key.length === 1 ? event.key.toUpperCase() : event.key;
+  const bindKey  = mainKey.length === 1  ? mainKey.toUpperCase()  : mainKey;
+  return (
+    eventKey === bindKey &&
+    event.altKey   === needsAlt   &&
+    event.ctrlKey  === needsCtrl  &&
+    event.shiftKey === needsShift &&
+    event.metaKey  === needsMeta
+  );
+}
+
 function checkDomainBlock() {
   const hostname = window.location.hostname;
   const domains = (settings && settings.blacklistedDomains) || [];
@@ -36,11 +67,12 @@ function checkDomainBlock() {
 }
 
 function loadSettings() {
-  chrome.storage.local.get(['wordMap', 'enabled', 'settings', 'language'], (data) => {
+  chrome.storage.local.get(['wordMap', 'enabled', 'settings', 'language', 'secretOptions'], (data) => {
     wordMap = data.wordMap || {};
     enabled = data.enabled !== false;
     settings = data.settings || { autoCapitalize: false, blacklistedDomains: [] };
     currentLang = data.language || 'pt';
+    secretOptions = data.secretOptions || { revealed: false, highlightCorrections: false, correctionFlair: false, wordTrail: false, wordTrailColor: '#4C90D6', wordTrailRgb: false };
     checkDomainBlock();
   });
 }
@@ -51,16 +83,907 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (changes.enabled !== undefined) enabled = changes.enabled.newValue !== false;
   if (changes.settings) {
     settings = changes.settings.newValue || { autoCapitalize: false, blacklistedDomains: [] };
+    if (!settings.autoCapitalize || !settings.skipCapEnabled) {
+      skipCapForThisSentence = false;
+    }
     checkDomainBlock();
   }
   if (changes.language) currentLang = changes.language.newValue || 'pt';
+  if (changes.secretOptions) {
+    const prev = secretOptions;
+    secretOptions = changes.secretOptions.newValue || secretOptions;
+    if (prev.wordTrail && !secretOptions.wordTrail) {
+      clearWordTrailOverlays();
+      wordTrailEntries = [];
+    }
+  }
 });
 
 loadSettings();
 
+// Re-render word trail overlays after any scroll so they track their words.
+// capture:true ensures we catch scrolls on inner scrollable elements too.
+// Throttled via rAF to avoid redundant repaints within the same frame.
+let _trailScrollRaf = null;
+window.addEventListener('scroll', () => {
+  if (!secretOptions.wordTrail || !wordTrailEntries.length) return;
+  if (_trailScrollRaf) return;
+  _trailScrollRaf = requestAnimationFrame(() => {
+    _trailScrollRaf = null;
+    renderWordTrailOverlays();
+  });
+}, { passive: true, capture: true });
+
+
+// Uses capture so it fires even when a text field has focus.
+document.addEventListener('keydown', (e) => {
+  if (!enabled || blockedByDomain) return;
+
+  // Skip-capitalisation keybind
+  if (settings.autoCapitalize && settings.skipCapEnabled) {
+    if (matchesKeybind(e, settings.skipCapKey || 'Alt+K')) {
+      skipCapForThisSentence = true;
+      e.preventDefault();
+      return;
+    }
+  }
+
+  // Cursor locator keybind – works in any text input on any page
+  if (secretOptions.cursorLocator && matchesKeybind(e, secretOptions.cursorLocatorKey || 'Alt+Q')) {
+    const el = document.activeElement;
+    if (el) {
+      const isTextInput =
+        ((el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') && el.type !== 'password') ||
+        !!el.isContentEditable;
+      if (isTextInput) {
+        showCursorLocator(el);
+        e.preventDefault();
+      }
+    }
+  }
+}, true);
+
 // ---------------------------------------------------------------------------
-// Correction logic
+// Stats tracking (for achievements)
 // ---------------------------------------------------------------------------
+
+// Counts toasts currently on screen so each new one stacks above the last.
+let __cbToastCount = 0;
+
+/** Render an achievement toast notification on the active web page. */
+function showAchievementToastOnPage(def) {
+  const DISPLAY_MS = 7000;
+  const SLIDE_MS   = 400;
+
+  const bottomOffset = 20 + __cbToastCount * 130;
+  __cbToastCount++;
+
+  // ── Outer toast container ────────────────────────────────────────────────
+  const toast = document.createElement('div');
+  Object.assign(toast.style, {
+    position: 'fixed',
+    right: '-380px',
+    bottom: bottomOffset + 'px',
+    width: '340px',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: '#fff',
+    borderRadius: '10px',
+    padding: '12px 16px 10px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.28)',
+    transition: 'right ' + SLIDE_MS + 'ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+    zIndex: '2147483647',
+    pointerEvents: 'auto',
+    userSelect: 'none',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    boxSizing: 'border-box',
+  });
+
+  // ── Top row: icon + text + dismiss ──────────────────────────────────────
+  const topRow = document.createElement('div');
+  Object.assign(topRow.style, {
+    display: 'flex', alignItems: 'center', gap: '10px',
+  });
+
+  const icon = document.createElement('span');
+  Object.assign(icon.style, { fontSize: '26px', flexShrink: '0' });
+  icon.textContent = '🏆';
+
+  const body = document.createElement('div');
+  Object.assign(body.style, {
+    display: 'flex', flexDirection: 'column', gap: '2px',
+    minWidth: '0', overflow: 'hidden', flex: '1',
+  });
+
+  const titleEl = document.createElement('strong');
+  Object.assign(titleEl.style, {
+    fontSize: '12px', letterSpacing: '0.3px', opacity: '0.85',
+    textTransform: 'uppercase', display: 'block',
+  });
+  titleEl.textContent = I18n.t('ach-toast-title');
+
+  const nameEl = document.createElement('span');
+  Object.assign(nameEl.style, {
+    fontSize: '14px', fontWeight: '600', whiteSpace: 'nowrap',
+    overflow: 'hidden', textOverflow: 'ellipsis', display: 'block',
+  });
+  nameEl.textContent = I18n.t('ach-' + def.id + '-name');
+
+  body.appendChild(titleEl);
+  body.appendChild(nameEl);
+
+  // Dismiss (×) button
+  const dismissBtn = document.createElement('button');
+  Object.assign(dismissBtn.style, {
+    background: 'rgba(255,255,255,0.20)',
+    border: 'none',
+    color: '#fff',
+    width: '24px',
+    height: '24px',
+    borderRadius: '50%',
+    cursor: 'pointer',
+    fontSize: '13px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: '0',
+    alignSelf: 'flex-start',
+    padding: '0',
+    lineHeight: '1',
+  });
+  dismissBtn.title = I18n.t('ach-toast-btn-dismiss');
+  dismissBtn.textContent = '✕';
+  dismissBtn.addEventListener('click', () => slideOut());
+
+  topRow.appendChild(icon);
+  topRow.appendChild(body);
+  topRow.appendChild(dismissBtn);
+
+  // ── Bottom row: action buttons ───────────────────────────────────────────
+  const btnRow = document.createElement('div');
+  Object.assign(btnRow.style, {
+    display: 'flex', gap: '6px', justifyContent: 'flex-end',
+  });
+
+  const makeBtn = (label) => {
+    const b = document.createElement('button');
+    Object.assign(b.style, {
+      background: 'rgba(255,255,255,0.20)',
+      border: '1px solid rgba(255,255,255,0.35)',
+      color: '#fff',
+      borderRadius: '6px',
+      padding: '4px 10px',
+      fontSize: '12px',
+      cursor: 'pointer',
+      fontFamily: 'inherit',
+      fontWeight: '600',
+      whiteSpace: 'nowrap',
+    });
+    b.textContent = label;
+    b.addEventListener('mouseenter', () => { b.style.background = 'rgba(255,255,255,0.35)'; });
+    b.addEventListener('mouseleave', () => { b.style.background = 'rgba(255,255,255,0.20)'; });
+    return b;
+  };
+
+  // "View Achievements" — shows an in-page achievement list panel
+  const viewListBtn = makeBtn(I18n.t('ach-toast-btn-view-list'));
+  viewListBtn.addEventListener('click', () => {
+    slideOut();
+    showAchievementListPanel();
+  });
+  btnRow.appendChild(viewListBtn);
+
+  // "View Reward" — only when the achievement has a reward; opens sandbox tab
+  if (def.reward) {
+    const viewRewardBtn = makeBtn(I18n.t('ach-toast-btn-view-reward'));
+    viewRewardBtn.addEventListener('click', () => {
+      slideOut();
+      chrome.runtime.sendMessage({ action: 'openSandbox' });
+    });
+    btnRow.appendChild(viewRewardBtn);
+  }
+
+  toast.appendChild(topRow);
+  toast.appendChild(btnRow);
+  document.body.appendChild(toast);
+
+  // ── Auto-slide lifecycle ─────────────────────────────────────────────────
+  let dismissed = false;
+  let slideOutTimer;
+
+  function slideOut() {
+    if (dismissed) return;
+    dismissed = true;
+    clearTimeout(slideOutTimer);
+    toast.style.right = '-380px';
+    setTimeout(() => {
+      toast.remove();
+      __cbToastCount = Math.max(0, __cbToastCount - 1);
+    }, SLIDE_MS);
+  }
+
+  // Slide in on next frame
+  requestAnimationFrame(() => { toast.style.right = '20px'; });
+
+  // Slide out after DISPLAY_MS
+  slideOutTimer = setTimeout(slideOut, DISPLAY_MS);
+}
+
+// ---------------------------------------------------------------------------
+// In-page achievement list panel (shown when "View Achievements" is clicked)
+// ---------------------------------------------------------------------------
+
+function showAchievementListPanel() {
+  // Only one panel at a time
+  if (document.getElementById('__cb_ach_panel__')) return;
+
+  chrome.storage.local.get(['cbAchievements'], (data) => {
+    const achievements = data.cbAchievements || {};
+
+    // ── Backdrop ──────────────────────────────────────────────────────────
+    const backdrop = document.createElement('div');
+    backdrop.id = '__cb_ach_panel__';
+    Object.assign(backdrop.style, {
+      position: 'fixed',
+      inset: '0',
+      background: 'rgba(0,0,0,0.65)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: '2147483646',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    });
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) backdrop.remove();
+    });
+
+    // ── Dialog ────────────────────────────────────────────────────────────
+    const dialog = document.createElement('div');
+    Object.assign(dialog.style, {
+      background: '#fff',
+      borderRadius: '12px',
+      boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+      width: '480px',
+      maxWidth: '90vw',
+      maxHeight: '80vh',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+      boxSizing: 'border-box',
+    });
+
+    // ── Header ────────────────────────────────────────────────────────────
+    const header = document.createElement('div');
+    Object.assign(header.style, {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '18px 20px',
+      borderBottom: '1px solid #eee',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      color: '#fff',
+      flexShrink: '0',
+    });
+
+    const headerTitle = document.createElement('h2');
+    Object.assign(headerTitle.style, {
+      margin: '0', fontSize: '17px', fontWeight: '700', color: '#fff',
+    });
+    headerTitle.textContent = I18n.t('modal-achievements-h2');
+
+    const closeBtn = document.createElement('button');
+    Object.assign(closeBtn.style, {
+      background: 'rgba(255,255,255,0.2)',
+      border: 'none',
+      color: '#fff',
+      width: '28px',
+      height: '28px',
+      borderRadius: '50%',
+      cursor: 'pointer',
+      fontSize: '14px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    });
+    closeBtn.textContent = '✕';
+    closeBtn.addEventListener('click', () => backdrop.remove());
+
+    header.appendChild(headerTitle);
+    header.appendChild(closeBtn);
+
+    // ── Achievement list ──────────────────────────────────────────────────
+    const listEl = document.createElement('div');
+    Object.assign(listEl.style, {
+      overflowY: 'auto',
+      padding: '16px',
+      flex: '1',
+    });
+
+    const unlockedCount = ACHIEVEMENT_DEFINITIONS.filter((d) => achievements[d.id]).length;
+
+    const summary = document.createElement('div');
+    Object.assign(summary.style, {
+      textAlign: 'center',
+      fontSize: '13px',
+      color: '#888',
+      marginBottom: '14px',
+      padding: '8px',
+      background: '#f8f9fa',
+      borderRadius: '6px',
+    });
+    summary.textContent = I18n.t('ach-summary', {
+      unlocked: unlockedCount,
+      total: ACHIEVEMENT_DEFINITIONS.length,
+    });
+    listEl.appendChild(summary);
+
+    for (const def of ACHIEVEMENT_DEFINITIONS) {
+      const unlockedAt = achievements[def.id];
+      const isUnlocked = !!unlockedAt;
+
+      const item = document.createElement('div');
+      Object.assign(item.style, {
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '12px',
+        padding: '12px',
+        borderRadius: '8px',
+        marginBottom: '8px',
+        border: '1px solid ' + (isUnlocked ? '#86efac' : '#eee'),
+        background: isUnlocked ? '#f0fdf4' : '#fafafa',
+        opacity: isUnlocked ? '1' : '0.65',
+      });
+
+      const itemIcon = document.createElement('div');
+      Object.assign(itemIcon.style, { fontSize: '24px', flexShrink: '0', marginTop: '1px' });
+      itemIcon.textContent = isUnlocked ? '🏆' : '🔒';
+
+      const info = document.createElement('div');
+      Object.assign(info.style, {
+        display: 'flex', flexDirection: 'column', gap: '3px', flex: '1',
+      });
+
+      const achName = document.createElement('strong');
+      Object.assign(achName.style, { fontSize: '14px', color: '#333' });
+      achName.textContent = I18n.t('ach-' + def.id + '-name');
+
+      const achDesc = document.createElement('span');
+      Object.assign(achDesc.style, { fontSize: '12px', color: '#666' });
+      achDesc.textContent = I18n.t('ach-' + def.id + '-desc');
+
+      const rewardText = def.reward
+        ? I18n.t('ach-reward-' + def.reward)
+        : I18n.t('ach-reward-none');
+      const achReward = document.createElement('span');
+      Object.assign(achReward.style, { fontSize: '11px', color: '#999', fontStyle: 'italic' });
+      achReward.textContent = I18n.t('ach-reward-label') + ' ' + rewardText;
+
+      info.appendChild(achName);
+      info.appendChild(achDesc);
+      info.appendChild(achReward);
+
+      if (unlockedAt) {
+        const achDate = document.createElement('span');
+        Object.assign(achDate.style, { fontSize: '11px', color: '#22c55e', fontWeight: '600', marginTop: '2px' });
+        achDate.textContent = I18n.t('ach-unlocked-on') + ' ' + new Date(unlockedAt).toLocaleString(I18n.locale());
+        info.appendChild(achDate);
+      }
+
+      item.appendChild(itemIcon);
+      item.appendChild(info);
+      listEl.appendChild(item);
+    }
+
+    dialog.appendChild(header);
+    dialog.appendChild(listEl);
+    backdrop.appendChild(dialog);
+    document.body.appendChild(backdrop);
+  });
+}
+
+function recordCorrection() {
+  chrome.storage.local.get(['cbStats', 'cbAchievements', 'secretOptions'], (data) => {
+    const stats = data.cbStats || { wordsAdded: 0, correctionsApplied: 0 };
+    stats.correctionsApplied = (stats.correctionsApplied || 0) + 1;
+
+    // Increment XP whenever the XP bar feature is enabled, regardless of which page the
+    // correction happened on. Previously this was only done in sandbox.js, causing XP to
+    // be skipped for corrections made on other pages.
+    const opts = data.secretOptions || { revealed: false, highlightCorrections: false, correctionFlair: false, wordTrail: false, wordTrailColor: '#4C90D6', wordTrailRgb: false };
+    let secretChanged = false;
+    if (opts.xpBar) {
+      opts.xpBarXp = (opts.xpBarXp || 0) + 1;
+      secretChanged = true;
+    }
+
+    const currentAchievements = data.cbAchievements || {};
+    const { newlyUnlocked, updated } = processAchievements(stats, currentAchievements);
+
+    if (newlyUnlocked.length > 0) {
+      // Grant any rewards and mark the secret panel as revealed
+      newlyUnlocked.forEach((id) => {
+        const def = ACHIEVEMENT_DEFINITIONS.find((d) => d.id === id);
+        if (!def) return;
+        if (def.reward === 'highlight' && !opts.highlightCorrections) {
+          opts.highlightCorrections = true;
+          opts.revealed = true;
+          secretChanged = true;
+        } else if (def.reward === 'flair' && !opts.correctionFlair) {
+          opts.correctionFlair = true;
+          opts.revealed = true;
+          secretChanged = true;
+        } else if (
+          (def.reward === 'xpbar' || def.reward === 'cursorlocator' ||
+           def.reward === 'wordtrail' || def.reward === 'wordtrailcolor' ||
+           def.reward === 'wordtrailrgb') && !opts.revealed
+        ) {
+          opts.revealed = true;
+          secretChanged = true;
+        }
+      });
+
+      // Save stats + newly unlocked achievements atomically (and secretOptions if changed).
+      // Saving cbAchievements together with cbStats means sandbox.js's onChanged listener
+      // will see the updated cbAchievements before it calls checkAndSaveAchievements(),
+      // preventing duplicate toasts when the sandbox page is also open.
+      const toSave = { cbStats: stats, cbAchievements: updated };
+      if (secretChanged) {
+        toSave.secretOptions = opts;
+        secretOptions = opts;
+      }
+      chrome.storage.local.set(toSave, () => {
+        newlyUnlocked.forEach((id, i) => {
+          const def = ACHIEVEMENT_DEFINITIONS.find((d) => d.id === id);
+          if (def) setTimeout(() => showAchievementToastOnPage(def), i * 400);
+        });
+      });
+    } else {
+      const toSave = { cbStats: stats };
+      if (secretChanged) {
+        toSave.secretOptions = opts;
+        secretOptions = opts;
+      }
+      chrome.storage.local.set(toSave);
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Secret reward features
+// ---------------------------------------------------------------------------
+
+/**
+ * Lazily inject the CSS keyframe animations needed by the reward effects.
+ * Only runs once per document; uses an id-guard to avoid duplicates.
+ */
+function ensureContentStyles() {
+  if (document.getElementById('__cb_content_styles__')) return;
+  const s = document.createElement('style');
+  s.id = '__cb_content_styles__';
+  s.textContent =
+    '@keyframes __cb_flair_float__{' +
+    '0%{opacity:1;transform:translateY(0) scale(1) rotate(0deg)}' +
+    '100%{opacity:0;transform:translateY(-60px) scale(1.5) rotate(20deg)}}' +
+    '@keyframes __cb_word_flash__{' +
+    '0%{opacity:.7}100%{opacity:0}}' +
+    '@keyframes __cb_word_ring__{' +
+    '0%{transform:scale(1);opacity:.9}' +
+    '100%{transform:scale(1.35);opacity:0}}' +
+    '@keyframes __cb_cursor_beacon__{' +
+    '0%{opacity:1;transform:translateY(0)}' +
+    '60%{opacity:1;transform:translateY(-5px)}' +
+    '100%{opacity:0;transform:translateY(-14px)}}' +
+    '@keyframes __cb_cursor_ring__{' +
+    '0%{transform:scale(1);opacity:.9}' +
+    '100%{transform:scale(2.8);opacity:0}}';
+  (document.head || document.documentElement).appendChild(s);
+}
+
+/** Show a floating emoji burst near the element that was just corrected. */
+function showCorrectionFlair(element) {
+  if (!secretOptions.correctionFlair) return;
+  ensureContentStyles();
+  const rect = element.getBoundingClientRect();
+  const flair = document.createElement('div');
+  Object.assign(flair.style, {
+    position: 'fixed',
+    fontSize: '22px',
+    left: (rect.left + Math.random() * Math.max(rect.width - 30, 10)) + 'px',
+    top: (rect.top + Math.random() * Math.max(rect.height / 2, 10)) + 'px',
+    pointerEvents: 'none',
+    zIndex: '2147483647',
+    userSelect: 'none',
+    animation: '__cb_flair_float__ 0.8s ease-out forwards',
+  });
+  flair.textContent = FLAIR_OPTIONS[Math.floor(Math.random() * FLAIR_OPTIONS.length)];
+  document.body.appendChild(flair);
+  setTimeout(() => flair.remove(), 800);
+}
+
+/**
+ * Overlay a brief green highlight over the corrected word in an input/textarea.
+ * Uses the "mirror div" technique to measure the word's pixel position without
+ * altering the element's content or cursor.
+ */
+function highlightCorrectedWord(element, wordStart, wordLength) {
+  if (!secretOptions.highlightCorrections) return;
+  ensureContentStyles();
+
+  const cs = window.getComputedStyle(element);
+  const mirror = document.createElement('div');
+  [
+    'boxSizing', 'width',
+    'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+    'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
+    'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing',
+    'wordSpacing', 'tabSize', 'lineHeight',
+  ].forEach((p) => { mirror.style[p] = cs[p]; });
+
+  const elRect = element.getBoundingClientRect();
+  Object.assign(mirror.style, {
+    position: 'fixed',
+    top: elRect.top + 'px',
+    left: elRect.left + 'px',
+    visibility: 'hidden',
+    overflow: 'hidden',
+    height: element.offsetHeight + 'px',
+    whiteSpace: 'pre-wrap',
+    wordWrap: 'break-word',
+  });
+
+  const text = element.value;
+  const markEl = document.createElement('mark');
+  markEl.textContent = text.substring(wordStart, wordStart + wordLength);
+  mirror.appendChild(document.createTextNode(text.substring(0, wordStart)));
+  mirror.appendChild(markEl);
+  document.body.appendChild(mirror);
+  mirror.scrollTop = element.scrollTop;
+
+  const markRect = markEl.getBoundingClientRect();
+  mirror.remove();
+
+  if (markRect.width === 0 || markRect.height === 0) return;
+
+  const hl = document.createElement('div');
+  Object.assign(hl.style, {
+    position: 'fixed',
+    left: markRect.left + 'px',
+    top: markRect.top + 'px',
+    width: markRect.width + 'px',
+    height: markRect.height + 'px',
+    background: 'transparent',
+    border: '2px solid rgba(74,144,217,0.85)',
+    borderRadius: '4px',
+    pointerEvents: 'none',
+    zIndex: '2147483647',
+    animation: '__cb_word_ring__ 1.5s ease-out forwards',
+  });
+  document.body.appendChild(hl);
+  setTimeout(() => hl.remove(), 1500);
+}
+
+/**
+ * Same as highlightCorrectedWord but for a contenteditable text node.
+ * Uses the Range API to get the exact bounding rect of the word.
+ */
+function highlightCorrectedWordCE(node, wordStart, wordLength) {
+  if (!secretOptions.highlightCorrections) return;
+  ensureContentStyles();
+
+  const startOffset = Math.min(wordStart, node.textContent.length);
+  const endOffset = Math.min(wordStart + wordLength, node.textContent.length);
+  if (startOffset >= endOffset) return;
+
+  const range = document.createRange();
+  range.setStart(node, startOffset);
+  range.setEnd(node, endOffset);
+  const markRect = range.getBoundingClientRect();
+
+  if (markRect.width === 0 || markRect.height === 0) return;
+
+  const hl = document.createElement('div');
+  Object.assign(hl.style, {
+    position: 'fixed',
+    left: markRect.left + 'px',
+    top: markRect.top + 'px',
+    width: markRect.width + 'px',
+    height: markRect.height + 'px',
+    background: 'transparent',
+    border: '2px solid rgba(74,144,217,0.85)',
+    borderRadius: '4px',
+    pointerEvents: 'none',
+    zIndex: '2147483647',
+    animation: '__cb_word_ring__ 1.5s ease-out forwards',
+  });
+  document.body.appendChild(hl);
+  setTimeout(() => hl.remove(), 1500);
+}
+
+/**
+ * Show a beacon pointing at the cursor's current position in the given element.
+ * Triggered by the Alt+Q keybind when the cursor locator reward is active.
+ */
+function showCursorLocator(el) {
+  if (!secretOptions.cursorLocator) return;
+  ensureContentStyles();
+
+  let cursorRect = null;
+
+  if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+    const cs = window.getComputedStyle(el);
+    const mirror = document.createElement('div');
+    [
+      'boxSizing', 'width',
+      'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+      'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
+      'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing',
+      'wordSpacing', 'tabSize', 'lineHeight',
+    ].forEach((p) => { mirror.style[p] = cs[p]; });
+
+    const elRect = el.getBoundingClientRect();
+    Object.assign(mirror.style, {
+      position: 'fixed',
+      top: elRect.top + 'px',
+      left: elRect.left + 'px',
+      visibility: 'hidden',
+      overflow: 'hidden',
+      height: el.offsetHeight + 'px',
+      whiteSpace: 'pre-wrap',
+      wordWrap: 'break-word',
+    });
+
+    const pos = el.selectionStart || 0;
+    const cursorSpan = document.createElement('span');
+    cursorSpan.textContent = '\u200B'; // zero-width space marks cursor position
+    mirror.appendChild(document.createTextNode(el.value.substring(0, pos)));
+    mirror.appendChild(cursorSpan);
+    document.body.appendChild(mirror);
+    mirror.scrollTop = el.scrollTop;
+    cursorRect = cursorSpan.getBoundingClientRect();
+    mirror.remove();
+  } else if (el.isContentEditable) {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0).cloneRange();
+      range.collapse(true);
+      cursorRect = range.getBoundingClientRect();
+    }
+  }
+
+  if (!cursorRect || cursorRect.height === 0) return;
+
+  const x = cursorRect.left;
+  const y = cursorRect.top;
+
+  const arrow = document.createElement('div');
+  Object.assign(arrow.style, {
+    position: 'fixed',
+    left: (x - 10) + 'px',
+    top: (y - 28) + 'px',
+    fontSize: '20px',
+    color: '#4A90D9',
+    pointerEvents: 'none',
+    zIndex: '2147483647',
+    userSelect: 'none',
+    animation: '__cb_cursor_beacon__ 2.5s ease-out forwards',
+  });
+  arrow.textContent = '▼';
+  document.body.appendChild(arrow);
+
+  const ring = document.createElement('div');
+  Object.assign(ring.style, {
+    position: 'fixed',
+    left: (x - 10) + 'px',
+    top: (y - 2) + 'px',
+    width: '20px',
+    height: '20px',
+    borderRadius: '50%',
+    border: '2px solid #4A90D9',
+    pointerEvents: 'none',
+    zIndex: '2147483647',
+    animation: '__cb_cursor_ring__ 2.5s ease-out forwards',
+  });
+  document.body.appendChild(ring);
+
+  setTimeout(() => { arrow.remove(); ring.remove(); }, 2500);
+}
+
+// ---------------------------------------------------------------------------
+// Word Trail
+// ---------------------------------------------------------------------------
+
+const WORD_TRAIL_OPACITIES = [0.70, 0.50, 0.30, 0.20, 0.10];
+const WORD_TRAIL_DEFAULT_COLOR = '#4C90D6';
+
+// Trail state – in-memory only, per-tab
+// Each entry: { type: 'input', element, start, length, hue }
+//          or { type: 'ce',    node,    start, length, hue }
+let wordTrailEntries = [];
+let wordTrailRgbHue = 0; // advances 30° per word, not persisted
+
+/** Convert #rrggbb to rgba() with the given alpha. */
+function hexToRgba(hex, alpha) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+/** Remove all word trail overlays injected by this script. */
+function clearWordTrailOverlays() {
+  document.querySelectorAll('[data-cb-trail]').forEach((el) => el.remove());
+}
+
+const TRAIL_STYLE_PROPS = [
+  'boxSizing', 'width',
+  'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+  'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
+  'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing',
+  'wordSpacing', 'tabSize', 'lineHeight',
+];
+
+/**
+ * Re-render all trail overlays.  Called every time a new word is added so
+ * positions are always fresh (relative to the current viewport).
+ */
+function renderWordTrailOverlays() {
+  clearWordTrailOverlays();
+  if (!wordTrailEntries.length) return;
+  ensureContentStyles();
+
+  wordTrailEntries.forEach(({ type, element, node, start, length, hue }, i) => {
+    const opacity = WORD_TRAIL_OPACITIES[i];
+    let markRect = null;
+
+    if (type === 'input') {
+      if (!element.isConnected) return;
+      const cs = window.getComputedStyle(element);
+      const mirror = document.createElement('div');
+      TRAIL_STYLE_PROPS.forEach((p) => { mirror.style[p] = cs[p]; });
+      const elRect = element.getBoundingClientRect();
+      Object.assign(mirror.style, {
+        position: 'fixed',
+        top: elRect.top + 'px',
+        left: elRect.left + 'px',
+        visibility: 'hidden',
+        overflow: 'hidden',
+        height: element.offsetHeight + 'px',
+        whiteSpace: 'pre-wrap',
+        wordWrap: 'break-word',
+      });
+      const text = element.value;
+      const markEl = document.createElement('mark');
+      markEl.textContent = text.substring(start, start + length);
+      mirror.appendChild(document.createTextNode(text.substring(0, start)));
+      mirror.appendChild(markEl);
+      document.body.appendChild(mirror);
+      mirror.scrollTop = element.scrollTop;
+      markRect = markEl.getBoundingClientRect();
+      mirror.remove();
+    } else {
+      // contenteditable text node
+      if (!node.isConnected) return;
+      const startOffset = Math.min(start, node.textContent.length);
+      const endOffset = Math.min(start + length, node.textContent.length);
+      if (startOffset >= endOffset) return;
+      const range = document.createRange();
+      range.setStart(node, startOffset);
+      range.setEnd(node, endOffset);
+      markRect = range.getBoundingClientRect();
+    }
+
+    if (!markRect || markRect.width === 0 || markRect.height === 0) return;
+
+    let bgColor;
+    if (hue >= 0) {
+      bgColor = `hsla(${hue},100%,60%,${opacity})`;
+    } else {
+      const base = (secretOptions.wordTrailColor && /^#[0-9a-fA-F]{6}$/.test(secretOptions.wordTrailColor))
+        ? secretOptions.wordTrailColor
+        : WORD_TRAIL_DEFAULT_COLOR;
+      bgColor = hexToRgba(base, opacity);
+    }
+
+    const overlay = document.createElement('div');
+    overlay.setAttribute('data-cb-trail', '1');
+    Object.assign(overlay.style, {
+      position: 'fixed',
+      left: markRect.left + 'px',
+      top: markRect.top + 'px',
+      width: markRect.width + 'px',
+      height: markRect.height + 'px',
+      background: bgColor,
+      borderRadius: '2px',
+      pointerEvents: 'none',
+      zIndex: '2147483646',
+    });
+    document.body.appendChild(overlay);
+  });
+}
+
+/**
+ * Detect the last completed word in a standard input/textarea and push it
+ * to the trail.  Must be called AFTER correctInputElement() so that any
+ * correction is already reflected in element.value / selectionStart.
+ */
+function trackWordTrailInput(element) {
+  if (!secretOptions.wordTrail) return;
+  let cursorPos;
+  try { cursorPos = element.selectionStart; } catch { return; }
+  if (cursorPos === null || cursorPos === undefined) return;
+
+  const value = element.value;
+  const charBefore = value[cursorPos - 1];
+  if (!charBefore || !SEPARATOR_RE.test(charBefore)) return;
+
+  const textBefore = value.substring(0, cursorPos - 1);
+  const wordMatch = textBefore.match(/(\S+)$/);
+  if (!wordMatch) return;
+
+  const rawToken = wordMatch[1];
+  const strippedLeading = rawToken.replace(LEADING_PUNCT_RE, '');
+  const word = strippedLeading.replace(TRAILING_PUNCT_RE, '');
+  if (!word) return;
+
+  const leadingLen = rawToken.length - strippedLeading.length;
+  const wordStart = cursorPos - 1 - rawToken.length + leadingLen;
+
+  if (secretOptions.wordTrailRgb) {
+    wordTrailRgbHue = (wordTrailRgbHue + 30) % 360;
+  }
+  const hue = secretOptions.wordTrailRgb ? wordTrailRgbHue : -1;
+  wordTrailEntries.unshift({ type: 'input', element, start: wordStart, length: word.length, hue });
+  if (wordTrailEntries.length > WORD_TRAIL_OPACITIES.length) {
+    wordTrailEntries.length = WORD_TRAIL_OPACITIES.length;
+  }
+  renderWordTrailOverlays();
+}
+
+/**
+ * Same as trackWordTrailInput but for contenteditable elements.
+ */
+function trackWordTrailCE(element) {
+  if (!secretOptions.wordTrail) return;
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return;
+  const range = selection.getRangeAt(0);
+  if (!range.collapsed) return;
+  const node = range.startContainer;
+  if (!node || node.nodeType !== Node.TEXT_NODE) return;
+  if (!element.contains(node)) return;
+
+  const cursorPos = range.startOffset;
+  const text = node.textContent;
+  const charBefore = text[cursorPos - 1];
+  if (!charBefore || !SEPARATOR_RE.test(charBefore)) return;
+
+  const textBefore = text.substring(0, cursorPos - 1);
+  const wordMatch = textBefore.match(/(\S+)$/);
+  if (!wordMatch) return;
+
+  const rawToken = wordMatch[1];
+  const strippedLeading = rawToken.replace(LEADING_PUNCT_RE, '');
+  const word = strippedLeading.replace(TRAILING_PUNCT_RE, '');
+  if (!word) return;
+
+  const leadingLen = rawToken.length - strippedLeading.length;
+  const wordStart = cursorPos - 1 - rawToken.length + leadingLen;
+
+  if (secretOptions.wordTrailRgb) {
+    wordTrailRgbHue = (wordTrailRgbHue + 30) % 360;
+  }
+  const hue = secretOptions.wordTrailRgb ? wordTrailRgbHue : -1;
+  wordTrailEntries.unshift({ type: 'ce', node, start: wordStart, length: word.length, hue });
+  if (wordTrailEntries.length > WORD_TRAIL_OPACITIES.length) {
+    wordTrailEntries.length = WORD_TRAIL_OPACITIES.length;
+  }
+  renderWordTrailOverlays();
+}
+
+
 
 /**
  * Look up a correction for the given word.
@@ -142,6 +1065,10 @@ function correctInputElement(element) {
   } finally {
     applying = false;
   }
+
+  showCorrectionFlair(element);
+  highlightCorrectedWord(element, wordStart, correction.length);
+  recordCorrection();
 }
 
 /**
@@ -195,6 +1122,10 @@ function correctContentEditable(element) {
   } finally {
     applying = false;
   }
+
+  showCorrectionFlair(element);
+  highlightCorrectedWordCE(node, wordStart, correction.length);
+  recordCorrection();
 }
 
 // ---------------------------------------------------------------------------
@@ -226,6 +1157,7 @@ function isAtSentenceStart(textBefore) {
  * Only fires when a single lowercase letter was inserted (event.inputType === 'insertText').
  */
 function autoCapitalizeInput(element, event) {
+  if (skipCapForThisSentence) return;
   if (!event || event.inputType !== 'insertText') return;
   const typedChar = event.data;
   if (!typedChar || typedChar.length !== 1) return;
@@ -254,6 +1186,7 @@ function autoCapitalizeInput(element, event) {
  * Capitalise the just-typed letter in a contenteditable element.
  */
 function autoCapitalizeContentEditable(element, event) {
+  if (skipCapForThisSentence) return;
   if (!event || event.inputType !== 'insertText') return;
   const typedChar = event.data;
   if (!typedChar || typedChar.length !== 1) return;
@@ -310,8 +1243,31 @@ function handleInput(event) {
     }
   }
 
+  // Word trail (tracks ALL typed words, runs after correction so word
+  // positions reflect any replacement already applied above)
+  if (secretOptions.wordTrail) {
+    if (isTextInput) {
+      trackWordTrailInput(el);
+    } else if (el.isContentEditable) {
+      trackWordTrailCE(el);
+    }
+  }
+
   // Auto-capitalise (triggers on alphabetic letter at sentence start)
   if (settings.autoCapitalize) {
+    // Reset skip flag when a sentence-ending character (or newline) is typed
+    if (skipCapForThisSentence && settings.skipCapEnabled) {
+      const typedChar = event.data;
+      const inputType = event.inputType;
+      if (
+        (typedChar && (SENTENCE_END_RE.test(typedChar) || typedChar === '\n')) ||
+        inputType === 'insertParagraph' ||
+        inputType === 'insertLineBreak'
+      ) {
+        skipCapForThisSentence = false;
+      }
+    }
+
     if (isTextInput) {
       autoCapitalizeInput(el, event);
     } else if (el.isContentEditable) {
@@ -326,11 +1282,11 @@ function handleInput(event) {
 
 const SELECTOR = [
   'input:not([type="password"]):not([type="hidden"]):not([type="file"])' +
-    ':not([type="checkbox"]):not([type="radio"]):not([type="submit"])' +
-    ':not([type="button"]):not([type="reset"]):not([type="image"])' +
-    ':not([type="color"]):not([type="range"]):not([type="number"])' +
-    ':not([type="date"]):not([type="time"]):not([type="datetime-local"])' +
-    ':not([type="month"]):not([type="week"]):not([type="email"])',
+  ':not([type="checkbox"]):not([type="radio"]):not([type="submit"])' +
+  ':not([type="button"]):not([type="reset"]):not([type="image"])' +
+  ':not([type="color"]):not([type="range"]):not([type="number"])' +
+  ':not([type="date"]):not([type="time"]):not([type="datetime-local"])' +
+  ':not([type="month"]):not([type="week"]):not([type="email"])',
   'textarea',
   '[contenteditable]:not([contenteditable="false" i])',
 ].join(', ');

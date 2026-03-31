@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Corretor Branco",
-  "version": "2.3",
+  "version": "2.5",
   "description": "Corrige erros ortográficos em tempo real com base numa lista de palavras personalizada.",
   "permissions": [
     "storage",
@@ -21,6 +21,7 @@
       ],
       "js": [
         "i18n.js",
+        "achievements.js",
         "content.js"
       ],
       "all_frames": true,

@@ -2,17 +2,22 @@
 
 let wordMap = {};
 let settings = { autoCapitalize: false, blacklistedDomains: [] };
+let cbStats = { wordsAdded: 0, correctionsApplied: 0 };
+let cbAchievements = {};
 
 // ---------------------------------------------------------------------------
 // Storage helpers
 // ---------------------------------------------------------------------------
 
 function loadAll(callback) {
-  chrome.storage.local.get(['wordMap', 'settings', 'language'], (data) => {
+  chrome.storage.local.get(['wordMap', 'settings', 'language', 'cbStats', 'cbAchievements', 'theme'], (data) => {
     wordMap = data.wordMap || {};
     settings = data.settings || { autoCapitalize: false, blacklistedDomains: [] };
+    cbStats = data.cbStats || { wordsAdded: 0, correctionsApplied: 0 };
+    cbAchievements = data.cbAchievements || {};
     const lang = data.language || 'pt';
     I18n._lang = lang;
+    applyTheme(data.theme || 'light');
     if (callback) callback(lang);
   });
 }
@@ -23,6 +28,12 @@ function saveWordMap(callback) {
 
 function saveSettings(callback) {
   chrome.storage.local.set({ settings }, callback);
+}
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light';
+  const btn = document.getElementById('headerThemeToggle');
+  if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
 }
 
 // ---------------------------------------------------------------------------
@@ -79,9 +90,17 @@ function renderWordList(filter) {
 }
 
 function populateSettings() {
-  document.getElementById('autoCapitalizeChk').checked = settings.autoCapitalize;
+  const autoCapOn = settings.autoCapitalize;
+  document.getElementById('autoCapitalizeChk').checked = autoCapOn;
   document.getElementById('blacklistDomains').value =
     (settings.blacklistedDomains || []).join('\n');
+
+  // Sub-option: skip-capitalisation keybind
+  document.getElementById('skipCapSection').hidden = !autoCapOn;
+  const skipEnabled = !!settings.skipCapEnabled;
+  document.getElementById('skipCapEnabledChk').checked = skipEnabled;
+  document.getElementById('skipCapKeyRow').hidden = !skipEnabled;
+  document.getElementById('skipCapKeyInput').value = settings.skipCapKey || 'Alt+K';
 }
 
 // ---------------------------------------------------------------------------
@@ -127,6 +146,19 @@ function escapeCSV(value) {
 }
 
 // ---------------------------------------------------------------------------
+// Stats tracking (for achievements)
+// ---------------------------------------------------------------------------
+
+function recordWordsAdded(count) {
+  if (!count || count <= 0) return;
+  chrome.storage.local.get('cbStats', (data) => {
+    const stats = data.cbStats || { wordsAdded: 0, correctionsApplied: 0 };
+    stats.wordsAdded = (stats.wordsAdded || 0) + count;
+    chrome.storage.local.set({ cbStats: stats });
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Event: Add word pair
 // ---------------------------------------------------------------------------
 
@@ -166,6 +198,7 @@ document.getElementById('addWordForm').addEventListener('submit', (e) => {
     correctEl.value = '';
     incorrectEl.focus();
     renderWordList(document.getElementById('searchInput').value);
+    recordWordsAdded(1);
   });
 });
 
@@ -211,12 +244,59 @@ document.getElementById('clearAllBtn').addEventListener('click', () => {
 
 document.getElementById('autoCapitalizeChk').addEventListener('change', (e) => {
   settings.autoCapitalize = e.target.checked;
+  document.getElementById('skipCapSection').hidden = !e.target.checked;
+  if (!e.target.checked) {
+    // Disable skip-cap when auto-cap is turned off
+    settings.skipCapEnabled = false;
+    document.getElementById('skipCapEnabledChk').checked = false;
+    document.getElementById('skipCapKeyRow').hidden = true;
+  }
   saveSettings();
 });
 
 // ---------------------------------------------------------------------------
-// Event: Settings – blacklist save
+// Event: Settings – skip-capitalisation keybind
 // ---------------------------------------------------------------------------
+
+document.getElementById('skipCapEnabledChk').addEventListener('change', (e) => {
+  settings.skipCapEnabled = e.target.checked;
+  document.getElementById('skipCapKeyRow').hidden = !e.target.checked;
+  saveSettings();
+});
+
+/**
+ * Format a KeyboardEvent into a human-readable keybind string like "Alt+K".
+ * Returns null when only modifier keys are pressed (no main key yet).
+ */
+function formatKeybind(event) {
+  const parts = [];
+  if (event.ctrlKey)  parts.push('Ctrl');
+  if (event.altKey)   parts.push('Alt');
+  if (event.shiftKey) parts.push('Shift');
+  if (event.metaKey)  parts.push('Meta');
+  const key = event.key;
+  if (['Control', 'Alt', 'Shift', 'Meta'].includes(key)) return null;
+  parts.push(key.length === 1 ? key.toUpperCase() : key);
+  return parts.join('+');
+}
+
+let recording = false;
+
+document.getElementById('skipCapRecordBtn').addEventListener('click', () => {
+  recording = !recording;
+  const btn = document.getElementById('skipCapRecordBtn');
+  const input = document.getElementById('skipCapKeyInput');
+  if (recording) {
+    btn.textContent = I18n.t('opts-skipcap-recording');
+    input.value = '…';
+    input.classList.add('recording');
+  } else {
+    // Cancel recording
+    btn.textContent = I18n.t('opts-skipcap-record-btn');
+    input.value = settings.skipCapKey || 'Alt+K';
+    input.classList.remove('recording');
+  }
+});
 
 document.getElementById('saveBlacklistBtn').addEventListener('click', () => {
   const raw = document.getElementById('blacklistDomains').value;
@@ -282,6 +362,7 @@ document.getElementById('importFile').addEventListener('change', (e) => {
       let msg = I18n.t('msg-imported', { count: imported });
       if (skipped > 0) msg += ' ' + I18n.t('msg-skipped', { count: skipped });
       alert(msg);
+      recordWordsAdded(imported);
     });
   };
   reader.readAsText(file);
@@ -313,6 +394,96 @@ document.getElementById('exportBtn').addEventListener('click', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Achievements
+// ---------------------------------------------------------------------------
+
+function renderAchievements() {
+  const list = document.getElementById('achievementsList');
+  const unlockedCount = ACHIEVEMENT_DEFINITIONS.filter((d) => cbAchievements[d.id]).length;
+
+  let html =
+    `<div class="ach-summary">${I18n.t('ach-summary', { unlocked: unlockedCount, total: ACHIEVEMENT_DEFINITIONS.length })}</div>`;
+
+  for (const def of ACHIEVEMENT_DEFINITIONS) {
+    const unlockedAt = cbAchievements[def.id];
+    const dateStr = unlockedAt ? new Date(unlockedAt).toLocaleString(I18n.locale()) : null;
+    const rewardText = def.reward
+      ? escapeHtml(I18n.t('ach-reward-' + def.reward))
+      : I18n.t('ach-reward-none');
+
+    html +=
+      `<div class="ach-item ${unlockedAt ? 'ach-unlocked' : 'ach-locked'}">` +
+        `<div class="ach-icon">${unlockedAt ? '🏆' : '🔒'}</div>` +
+        `<div class="ach-info">` +
+          `<strong class="ach-name">${escapeHtml(I18n.t('ach-' + def.id + '-name'))}</strong>` +
+          `<span class="ach-desc">${escapeHtml(I18n.t('ach-' + def.id + '-desc'))}</span>` +
+          `<span class="ach-reward">${I18n.t('ach-reward-label')} ${rewardText}</span>` +
+          (dateStr ? `<span class="ach-date">${I18n.t('ach-unlocked-on')} ${escapeHtml(dateStr)}</span>` : '') +
+        `</div>` +
+      `</div>`;
+  }
+
+  list.innerHTML = html;
+
+  // Show the "View My Rewards" button only when at least one reward-bearing achievement is unlocked
+  const anyRewardUnlocked = ACHIEVEMENT_DEFINITIONS.some((d) => d.reward && cbAchievements[d.id]);
+  document.getElementById('viewRewardsBtn').hidden = !anyRewardUnlocked;
+}
+
+function openAchievementsModal() {
+  renderAchievements();
+  document.getElementById('achievementsModal').hidden = false;
+}
+
+function closeAchievementsModal() {
+  document.getElementById('achievementsModal').hidden = true;
+}
+
+function resetAchievements() {
+  if (!confirm(I18n.t('confirm-reset-achievements'))) return;
+  cbAchievements = {};
+  cbStats = { wordsAdded: 0, correctionsApplied: 0 };
+  chrome.storage.local.set({ cbAchievements: {}, cbStats: { wordsAdded: 0, correctionsApplied: 0 } }, () => {
+    renderAchievements();
+  });
+}
+
+document.getElementById('viewAchievementsBtn').addEventListener('click', openAchievementsModal);
+document.getElementById('viewRewardsBtn').addEventListener('click', () => {
+  window.open(chrome.runtime.getURL('sandbox.html'), '_blank');
+});
+document.getElementById('closeAchievementsBtn').addEventListener('click', closeAchievementsModal);
+document.getElementById('resetAchievementsBtn').addEventListener('click', resetAchievements);
+document.getElementById('achievementsModal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeAchievementsModal();
+});
+document.addEventListener('keydown', (e) => {
+  // While recording a new keybind, intercept all key events
+  if (recording) {
+    e.preventDefault();
+    if (e.key === 'Escape') {
+      // Cancel recording
+      recording = false;
+      document.getElementById('skipCapRecordBtn').textContent = I18n.t('opts-skipcap-record-btn');
+      document.getElementById('skipCapKeyInput').value = settings.skipCapKey || 'Alt+K';
+      document.getElementById('skipCapKeyInput').classList.remove('recording');
+    } else {
+      const formatted = formatKeybind(e);
+      if (formatted) {
+        settings.skipCapKey = formatted;
+        document.getElementById('skipCapKeyInput').value = formatted;
+        recording = false;
+        document.getElementById('skipCapRecordBtn').textContent = I18n.t('opts-skipcap-record-btn');
+        document.getElementById('skipCapKeyInput').classList.remove('recording');
+        saveSettings();
+      }
+    }
+    return;
+  }
+  if (e.key === 'Escape') closeAchievementsModal();
+});
+
+// ---------------------------------------------------------------------------
 // Sync language changes made from another page (e.g. popup)
 // ---------------------------------------------------------------------------
 
@@ -323,6 +494,19 @@ chrome.storage.onChanged.addListener((changes, area) => {
     I18n.apply(lang);
     document.getElementById('languageSelect').value = lang;
     renderWordList(document.getElementById('searchInput').value);
+    const modal = document.getElementById('achievementsModal');
+    if (modal && !modal.hidden) renderAchievements();
+  }
+  if (changes.cbAchievements) {
+    cbAchievements = changes.cbAchievements.newValue || {};
+    const modal = document.getElementById('achievementsModal');
+    if (modal && !modal.hidden) renderAchievements();
+  }
+  if (changes.cbStats) {
+    cbStats = changes.cbStats.newValue || { wordsAdded: 0, correctionsApplied: 0 };
+  }
+  if (changes.theme) {
+    applyTheme(changes.theme.newValue || 'light');
   }
 });
 
@@ -335,4 +519,11 @@ loadAll((lang) => {
   document.getElementById('languageSelect').value = lang;
   renderWordList();
   populateSettings();
+});
+
+document.getElementById('headerThemeToggle').addEventListener('click', () => {
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  const newTheme = isDark ? 'light' : 'dark';
+  applyTheme(newTheme);
+  chrome.storage.local.set({ theme: newTheme });
 });

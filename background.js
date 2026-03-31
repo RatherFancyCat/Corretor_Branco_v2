@@ -60,3 +60,10 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     word: info.selectionText,
   });
 });
+
+// Handle messages from content scripts
+chrome.runtime.onMessage.addListener((msg, _sender, _sendResponse) => {
+  if (msg.action === 'openSandbox') {
+    chrome.tabs.create({ url: chrome.runtime.getURL('sandbox.html') });
+  }
+});
