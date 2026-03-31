@@ -21,6 +21,7 @@
       ],
       "js": [
         "i18n.js",
+        "achievements.js",
         "content.js"
       ],
       "all_frames": true,

@@ -127,11 +127,123 @@ document.addEventListener('keydown', (e) => {
 // Stats tracking (for achievements)
 // ---------------------------------------------------------------------------
 
+// Counts toasts currently on screen so each new one stacks above the last.
+let __cbToastCount = 0;
+
+/** Render an achievement toast notification on the active web page. */
+function showAchievementToastOnPage(def) {
+  const bottomOffset = 20 + __cbToastCount * 76;
+  __cbToastCount++;
+
+  const toast = document.createElement('div');
+  Object.assign(toast.style, {
+    position: 'fixed',
+    right: '-320px',
+    bottom: bottomOffset + 'px',
+    width: '280px',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: '#fff',
+    borderRadius: '10px',
+    padding: '12px 16px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.28)',
+    transition: 'right 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+    zIndex: '2147483647',
+    pointerEvents: 'none',
+    userSelect: 'none',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    boxSizing: 'border-box',
+  });
+
+  const icon = document.createElement('span');
+  Object.assign(icon.style, { fontSize: '26px', flexShrink: '0' });
+  icon.textContent = '🏆';
+
+  const body = document.createElement('div');
+  Object.assign(body.style, { display: 'flex', flexDirection: 'column', gap: '2px', minWidth: '0', overflow: 'hidden' });
+
+  const titleEl = document.createElement('strong');
+  Object.assign(titleEl.style, {
+    fontSize: '12px', letterSpacing: '0.3px', opacity: '0.85',
+    textTransform: 'uppercase', display: 'block',
+  });
+  titleEl.textContent = I18n.t('ach-toast-title');
+
+  const nameEl = document.createElement('span');
+  Object.assign(nameEl.style, {
+    fontSize: '14px', fontWeight: '600', whiteSpace: 'nowrap',
+    overflow: 'hidden', textOverflow: 'ellipsis', display: 'block',
+  });
+  nameEl.textContent = I18n.t('ach-' + def.id + '-name');
+
+  body.appendChild(titleEl);
+  body.appendChild(nameEl);
+  toast.appendChild(icon);
+  toast.appendChild(body);
+  document.body.appendChild(toast);
+
+  // Slide in on next frame
+  requestAnimationFrame(() => { toast.style.right = '20px'; });
+
+  // Slide out after 3.5 s, then remove
+  setTimeout(() => {
+    toast.style.right = '-320px';
+    setTimeout(() => {
+      toast.remove();
+      __cbToastCount = Math.max(0, __cbToastCount - 1);
+    }, 400);
+  }, 3500);
+}
+
 function recordCorrection() {
-  chrome.storage.local.get('cbStats', (data) => {
+  chrome.storage.local.get(['cbStats', 'cbAchievements', 'secretOptions'], (data) => {
     const stats = data.cbStats || { wordsAdded: 0, correctionsApplied: 0 };
     stats.correctionsApplied = (stats.correctionsApplied || 0) + 1;
-    chrome.storage.local.set({ cbStats: stats });
+
+    const currentAchievements = data.cbAchievements || {};
+    const { newlyUnlocked, updated } = processAchievements(stats, currentAchievements);
+
+    if (newlyUnlocked.length > 0) {
+      // Grant any rewards and mark the secret panel as revealed
+      const opts = data.secretOptions || { revealed: false, highlightCorrections: false, correctionFlair: false };
+      let secretChanged = false;
+      newlyUnlocked.forEach((id) => {
+        const def = ACHIEVEMENT_DEFINITIONS.find((d) => d.id === id);
+        if (!def) return;
+        if (def.reward === 'highlight' && !opts.highlightCorrections) {
+          opts.highlightCorrections = true;
+          opts.revealed = true;
+          secretChanged = true;
+        } else if (def.reward === 'flair' && !opts.correctionFlair) {
+          opts.correctionFlair = true;
+          opts.revealed = true;
+          secretChanged = true;
+        } else if ((def.reward === 'xpbar' || def.reward === 'cursorlocator') && !opts.revealed) {
+          opts.revealed = true;
+          secretChanged = true;
+        }
+      });
+
+      // Save stats + newly unlocked achievements atomically (and secretOptions if changed).
+      // Saving cbAchievements together with cbStats means sandbox.js's onChanged listener
+      // will see the updated cbAchievements before it calls checkAndSaveAchievements(),
+      // preventing duplicate toasts when the sandbox page is also open.
+      const toSave = { cbStats: stats, cbAchievements: updated };
+      if (secretChanged) {
+        toSave.secretOptions = opts;
+        secretOptions = opts;
+      }
+      chrome.storage.local.set(toSave, () => {
+        newlyUnlocked.forEach((id, i) => {
+          const def = ACHIEVEMENT_DEFINITIONS.find((d) => d.id === id);
+          if (def) setTimeout(() => showAchievementToastOnPage(def), i * 400);
+        });
+      });
+    } else {
+      chrome.storage.local.set({ cbStats: stats });
+    }
   });
 }
 

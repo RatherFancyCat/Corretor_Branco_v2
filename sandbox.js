@@ -129,12 +129,16 @@ chrome.storage.onChanged.addListener((changes, area) => {
       log.innerHTML = `<li class="no-corrections">${I18n.t('sandbox-no-corrections')}</li>`;
     }
   }
+  // cbAchievements must be updated BEFORE cbStats so that when both keys
+  // change atomically (content.js saves them together after an unlock),
+  // checkAndSaveAchievements() sees the already-updated map and
+  // processAchievements() returns no new unlocks – preventing duplicate toasts.
+  if (changes.cbAchievements) {
+    cbAchievements = changes.cbAchievements.newValue || {};
+  }
   if (changes.cbStats) {
     cbStats = changes.cbStats.newValue || { wordsAdded: 0, correctionsApplied: 0 };
     checkAndSaveAchievements();
-  }
-  if (changes.cbAchievements) {
-    cbAchievements = changes.cbAchievements.newValue || {};
   }
   if (changes.secretOptions) {
     secretOptions = changes.secretOptions.newValue || secretOptions;
