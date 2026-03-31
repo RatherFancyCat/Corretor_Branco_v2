@@ -607,29 +607,274 @@ function checkAndSaveAchievements() {
 // ---------------------------------------------------------------------------
 
 function showAchievementToast(def) {
+  const DISPLAY_MS = 7000;
+  const SLIDE_MS   = 400;
+
   // Stack toasts upward: each new toast sits above existing ones
   const existing = document.querySelectorAll('.ach-toast');
-  const bottomOffset = 20 + existing.length * 76; // 76px stride per toast (≈68px height + 8px gap)
+  const bottomOffset = 20 + existing.length * 130;
 
+  // ── Outer toast container ────────────────────────────────────────────────
   const toast = document.createElement('div');
   toast.className = 'ach-toast';
   toast.style.bottom = bottomOffset + 'px';
-  toast.innerHTML =
+  toast.style.flexDirection = 'column';
+  toast.style.gap = '8px';
+  toast.style.padding = '12px 16px 10px';
+  toast.style.width = '340px';
+  toast.style.pointerEvents = 'auto';
+
+  // ── Top row: icon + text + dismiss ──────────────────────────────────────
+  const topRow = document.createElement('div');
+  Object.assign(topRow.style, { display: 'flex', alignItems: 'center', gap: '10px' });
+
+  topRow.innerHTML =
     `<span class="ach-toast-icon">🏆</span>` +
-    `<div class="ach-toast-body">` +
+    `<div class="ach-toast-body" style="flex:1">` +
       `<strong>${I18n.t('ach-toast-title')}</strong>` +
       `<span title="${escapeHtml(I18n.t('ach-' + def.id + '-name'))}">${escapeHtml(I18n.t('ach-' + def.id + '-name'))}</span>` +
     `</div>`;
+
+  const dismissBtn = document.createElement('button');
+  Object.assign(dismissBtn.style, {
+    background: 'rgba(255,255,255,0.20)',
+    border: 'none',
+    color: '#fff',
+    width: '24px',
+    height: '24px',
+    borderRadius: '50%',
+    cursor: 'pointer',
+    fontSize: '13px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: '0',
+    alignSelf: 'flex-start',
+    padding: '0',
+    lineHeight: '1',
+  });
+  dismissBtn.textContent = '✕';
+  dismissBtn.addEventListener('click', () => slideOut());
+  topRow.appendChild(dismissBtn);
+
+  // ── Bottom row: action buttons ───────────────────────────────────────────
+  const btnRow = document.createElement('div');
+  Object.assign(btnRow.style, { display: 'flex', gap: '6px', justifyContent: 'flex-end' });
+
+  const makeBtn = (label) => {
+    const b = document.createElement('button');
+    Object.assign(b.style, {
+      background: 'rgba(255,255,255,0.20)',
+      border: '1px solid rgba(255,255,255,0.35)',
+      color: '#fff',
+      borderRadius: '6px',
+      padding: '4px 10px',
+      fontSize: '12px',
+      cursor: 'pointer',
+      fontFamily: 'inherit',
+      fontWeight: '600',
+      whiteSpace: 'nowrap',
+    });
+    b.textContent = label;
+    b.addEventListener('mouseenter', () => { b.style.background = 'rgba(255,255,255,0.35)'; });
+    b.addEventListener('mouseleave', () => { b.style.background = 'rgba(255,255,255,0.20)'; });
+    return b;
+  };
+
+  // "View Achievements" — shows an in-page achievement list panel
+  const viewListBtn = makeBtn(I18n.t('ach-toast-btn-view-list'));
+  viewListBtn.addEventListener('click', () => {
+    slideOut();
+    showAchievementListPanelSandbox();
+  });
+  btnRow.appendChild(viewListBtn);
+
+  // "View Reward" — only when the achievement has a reward;
+  // on the sandbox page we scroll to the secret panel directly
+  if (def.reward) {
+    const viewRewardBtn = makeBtn(I18n.t('ach-toast-btn-view-reward'));
+    viewRewardBtn.addEventListener('click', () => {
+      slideOut();
+      const panel = document.getElementById('secretPanel');
+      if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    btnRow.appendChild(viewRewardBtn);
+  }
+
+  toast.appendChild(topRow);
+  toast.appendChild(btnRow);
   document.body.appendChild(toast);
+
+  // ── Auto-slide lifecycle ─────────────────────────────────────────────────
+  let dismissed = false;
+  let slideOutTimer;
+
+  function slideOut() {
+    if (dismissed) return;
+    dismissed = true;
+    clearTimeout(slideOutTimer);
+    toast.classList.remove('ach-toast-visible');
+    setTimeout(() => toast.remove(), SLIDE_MS);
+  }
 
   // Slide in on next frame
   requestAnimationFrame(() => toast.classList.add('ach-toast-visible'));
 
-  // Slide out after 3.5 s
-  setTimeout(() => {
-    toast.classList.remove('ach-toast-visible');
-    setTimeout(() => toast.remove(), 400);
-  }, 3500);
+  // Slide out after DISPLAY_MS
+  slideOutTimer = setTimeout(slideOut, DISPLAY_MS);
+}
+
+// ---------------------------------------------------------------------------
+// In-page achievement list panel (used by sandbox toast "View Achievements")
+// ---------------------------------------------------------------------------
+
+function showAchievementListPanelSandbox() {
+  if (document.getElementById('__cb_ach_panel__')) return;
+
+  // ── Backdrop ──────────────────────────────────────────────────────────
+  const backdrop = document.createElement('div');
+  backdrop.id = '__cb_ach_panel__';
+  Object.assign(backdrop.style, {
+    position: 'fixed',
+    inset: '0',
+    background: 'rgba(0,0,0,0.65)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: '9999',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  });
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) backdrop.remove();
+  });
+
+  // ── Dialog ────────────────────────────────────────────────────────────
+  const dialog = document.createElement('div');
+  Object.assign(dialog.style, {
+    background: '#fff',
+    borderRadius: '12px',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+    width: '480px',
+    maxWidth: '90vw',
+    maxHeight: '80vh',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    boxSizing: 'border-box',
+  });
+
+  // ── Header ────────────────────────────────────────────────────────────
+  const header = document.createElement('div');
+  Object.assign(header.style, {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '18px 20px',
+    borderBottom: '1px solid #eee',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: '#fff',
+    flexShrink: '0',
+  });
+
+  const headerTitle = document.createElement('h2');
+  Object.assign(headerTitle.style, {
+    margin: '0', fontSize: '17px', fontWeight: '700', color: '#fff',
+  });
+  headerTitle.textContent = I18n.t('modal-achievements-h2');
+
+  const closeBtn = document.createElement('button');
+  Object.assign(closeBtn.style, {
+    background: 'rgba(255,255,255,0.2)',
+    border: 'none',
+    color: '#fff',
+    width: '28px',
+    height: '28px',
+    borderRadius: '50%',
+    cursor: 'pointer',
+    fontSize: '14px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  });
+  closeBtn.textContent = '✕';
+  closeBtn.addEventListener('click', () => backdrop.remove());
+
+  header.appendChild(headerTitle);
+  header.appendChild(closeBtn);
+
+  // ── Achievement list ──────────────────────────────────────────────────
+  const listEl = document.createElement('div');
+  Object.assign(listEl.style, { overflowY: 'auto', padding: '16px', flex: '1' });
+
+  const unlockedCount = ACHIEVEMENT_DEFINITIONS.filter((d) => cbAchievements[d.id]).length;
+
+  const summary = document.createElement('div');
+  Object.assign(summary.style, {
+    textAlign: 'center', fontSize: '13px', color: '#888',
+    marginBottom: '14px', padding: '8px', background: '#f8f9fa', borderRadius: '6px',
+  });
+  summary.textContent = I18n.t('ach-summary', {
+    unlocked: unlockedCount, total: ACHIEVEMENT_DEFINITIONS.length,
+  });
+  listEl.appendChild(summary);
+
+  for (const def of ACHIEVEMENT_DEFINITIONS) {
+    const unlockedAt = cbAchievements[def.id];
+    const isUnlocked = !!unlockedAt;
+
+    const item = document.createElement('div');
+    Object.assign(item.style, {
+      display: 'flex', alignItems: 'flex-start', gap: '12px',
+      padding: '12px', borderRadius: '8px', marginBottom: '8px',
+      border: '1px solid ' + (isUnlocked ? '#86efac' : '#eee'),
+      background: isUnlocked ? '#f0fdf4' : '#fafafa',
+      opacity: isUnlocked ? '1' : '0.65',
+    });
+
+    const itemIcon = document.createElement('div');
+    Object.assign(itemIcon.style, { fontSize: '24px', flexShrink: '0', marginTop: '1px' });
+    itemIcon.textContent = isUnlocked ? '🏆' : '🔒';
+
+    const info = document.createElement('div');
+    Object.assign(info.style, { display: 'flex', flexDirection: 'column', gap: '3px', flex: '1' });
+
+    const achName = document.createElement('strong');
+    Object.assign(achName.style, { fontSize: '14px', color: '#333' });
+    achName.textContent = I18n.t('ach-' + def.id + '-name');
+
+    const achDesc = document.createElement('span');
+    Object.assign(achDesc.style, { fontSize: '12px', color: '#666' });
+    achDesc.textContent = I18n.t('ach-' + def.id + '-desc');
+
+    const rewardText = def.reward
+      ? I18n.t('ach-reward-' + def.reward)
+      : I18n.t('ach-reward-none');
+    const achReward = document.createElement('span');
+    Object.assign(achReward.style, { fontSize: '11px', color: '#999', fontStyle: 'italic' });
+    achReward.textContent = I18n.t('ach-reward-label') + ' ' + rewardText;
+
+    info.appendChild(achName);
+    info.appendChild(achDesc);
+    info.appendChild(achReward);
+
+    if (unlockedAt) {
+      const achDate = document.createElement('span');
+      Object.assign(achDate.style, {
+        fontSize: '11px', color: '#22c55e', fontWeight: '600', marginTop: '2px',
+      });
+      achDate.textContent = I18n.t('ach-unlocked-on') + ' ' + new Date(unlockedAt).toLocaleString(I18n.locale());
+      info.appendChild(achDate);
+    }
+
+    item.appendChild(itemIcon);
+    item.appendChild(info);
+    listEl.appendChild(item);
+  }
+
+  dialog.appendChild(header);
+  dialog.appendChild(listEl);
+  backdrop.appendChild(dialog);
+  document.body.appendChild(backdrop);
 }
 
 // ---------------------------------------------------------------------------

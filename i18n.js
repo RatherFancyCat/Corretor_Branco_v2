@@ -109,6 +109,9 @@ const TRANSLATIONS = {
     'ach-reward-cursorlocator':     '🎯 Localizador de Cursor',
     'ach-unlocked-on':              'Desbloqueada:',
     'ach-toast-title':              'Conquista Desbloqueada!',
+    'ach-toast-btn-dismiss':        '✕',
+    'ach-toast-btn-view-list':      '🏆 Ver Conquistas',
+    'ach-toast-btn-view-reward':    '🎁 Ver Recompensa',
     'confirm-reset-achievements':   'Tens a certeza que queres repor todas as conquistas e progresso? Esta ação não pode ser desfeita.',
 
     // Achievements section in options
@@ -241,6 +244,9 @@ const TRANSLATIONS = {
     'ach-reward-cursorlocator':     '🎯 Cursor Locator',
     'ach-unlocked-on':              'Unlocked:',
     'ach-toast-title':              'Achievement Unlocked!',
+    'ach-toast-btn-dismiss':        '✕',
+    'ach-toast-btn-view-list':      '🏆 View Achievements',
+    'ach-toast-btn-view-reward':    '🎁 View Reward',
     'confirm-reset-achievements':   'Are you sure you want to reset all achievements and progress? This cannot be undone.',
 
     // Achievements section in options
@@ -371,6 +377,9 @@ const TRANSLATIONS = {
     'ach-reward-cursorlocator':     '🎯 Localizador de Cursor',
     'ach-unlocked-on':              'Desbloqueado:',
     'ach-toast-title':              '¡Logro Desbloqueado!',
+    'ach-toast-btn-dismiss':        '✕',
+    'ach-toast-btn-view-list':      '🏆 Ver Logros',
+    'ach-toast-btn-view-reward':    '🎁 Ver Recompensa',
     'confirm-reset-achievements':   '¿Estás seguro de que quieres restablecer todos los logros y el progreso? Esta acción no se puede deshacer.',
 
     // Achievements section in options
@@ -503,6 +512,9 @@ const TRANSLATIONS = {
     'ach-reward-cursorlocator':     '🎯 Localisateur de curseur',
     'ach-unlocked-on':              'Débloqué\u00A0:',
     'ach-toast-title':              'Succès débloqué\u00A0!',
+    'ach-toast-btn-dismiss':        '✕',
+    'ach-toast-btn-view-list':      '🏆 Voir les succès',
+    'ach-toast-btn-view-reward':    '🎁 Voir la récompense',
     'confirm-reset-achievements':   'Êtes-vous sûr de vouloir réinitialiser tous les succès et la progression\u00A0? Cette action est irréversible.',
 
     // Achievements section in options
@@ -633,6 +645,9 @@ const TRANSLATIONS = {
     'ach-reward-cursorlocator':     '🎯 Cursor-Anzeige',
     'ach-unlocked-on':              'Freigeschaltet:',
     'ach-toast-title':              'Erfolg freigeschaltet!',
+    'ach-toast-btn-dismiss':        '✕',
+    'ach-toast-btn-view-list':      '🏆 Erfolge anzeigen',
+    'ach-toast-btn-view-reward':    '🎁 Belohnung ansehen',
     'confirm-reset-achievements':   'Bist du sicher, dass du alle Erfolge und Fortschritte zurücksetzen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.',
 
     // Achievements section in options
@@ -765,6 +780,9 @@ const TRANSLATIONS = {
     'ach-reward-cursorlocator':     '🎯 光标定位器',
     'ach-unlocked-on':              '解锁时间：',
     'ach-toast-title':              '成就已解锁！',
+    'ach-toast-btn-dismiss':        '✕',
+    'ach-toast-btn-view-list':      '🏆 查看成就',
+    'ach-toast-btn-view-reward':    '🎁 查看奖励',
     'confirm-reset-achievements':   '您确定要重置所有成就和进度吗？此操作无法撤消。',
 
     // Achievements section in options

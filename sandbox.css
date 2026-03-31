@@ -702,19 +702,19 @@ textarea#testArea:focus {
 /* ---- Achievement toast notification ---- */
 .ach-toast {
   position: fixed;
-  right: -320px;
-  width: 280px;
+  right: -380px; /* 340px toast width + 40px margin buffer to fully hide off-screen */
+  width: 340px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #fff;
   border-radius: 10px;
-  padding: 12px 16px;
+  padding: 12px 16px 10px;
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.28);
   transition: right 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   z-index: 9998;
-  pointer-events: none;
+  pointer-events: auto;
   user-select: none;
 }
 
@@ -732,6 +732,7 @@ textarea#testArea:focus {
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  overflow: hidden;
 }
 
 .ach-toast-body strong {

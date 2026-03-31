@@ -132,29 +132,39 @@ let __cbToastCount = 0;
 
 /** Render an achievement toast notification on the active web page. */
 function showAchievementToastOnPage(def) {
-  const bottomOffset = 20 + __cbToastCount * 76;
+  const DISPLAY_MS = 7000;
+  const SLIDE_MS   = 400;
+
+  const bottomOffset = 20 + __cbToastCount * 130;
   __cbToastCount++;
 
+  // ── Outer toast container ────────────────────────────────────────────────
   const toast = document.createElement('div');
   Object.assign(toast.style, {
     position: 'fixed',
-    right: '-320px',
+    right: '-380px',
     bottom: bottomOffset + 'px',
-    width: '280px',
+    width: '340px',
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     color: '#fff',
     borderRadius: '10px',
-    padding: '12px 16px',
+    padding: '12px 16px 10px',
     display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
+    flexDirection: 'column',
+    gap: '8px',
     boxShadow: '0 4px 20px rgba(0,0,0,0.28)',
-    transition: 'right 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+    transition: 'right ' + SLIDE_MS + 'ms cubic-bezier(0.34, 1.56, 0.64, 1)',
     zIndex: '2147483647',
-    pointerEvents: 'none',
+    pointerEvents: 'auto',
     userSelect: 'none',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     boxSizing: 'border-box',
+  });
+
+  // ── Top row: icon + text + dismiss ──────────────────────────────────────
+  const topRow = document.createElement('div');
+  Object.assign(topRow.style, {
+    display: 'flex', alignItems: 'center', gap: '10px',
   });
 
   const icon = document.createElement('span');
@@ -162,7 +172,10 @@ function showAchievementToastOnPage(def) {
   icon.textContent = '🏆';
 
   const body = document.createElement('div');
-  Object.assign(body.style, { display: 'flex', flexDirection: 'column', gap: '2px', minWidth: '0', overflow: 'hidden' });
+  Object.assign(body.style, {
+    display: 'flex', flexDirection: 'column', gap: '2px',
+    minWidth: '0', overflow: 'hidden', flex: '1',
+  });
 
   const titleEl = document.createElement('strong');
   Object.assign(titleEl.style, {
@@ -180,21 +193,274 @@ function showAchievementToastOnPage(def) {
 
   body.appendChild(titleEl);
   body.appendChild(nameEl);
-  toast.appendChild(icon);
-  toast.appendChild(body);
+
+  // Dismiss (×) button
+  const dismissBtn = document.createElement('button');
+  Object.assign(dismissBtn.style, {
+    background: 'rgba(255,255,255,0.20)',
+    border: 'none',
+    color: '#fff',
+    width: '24px',
+    height: '24px',
+    borderRadius: '50%',
+    cursor: 'pointer',
+    fontSize: '13px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: '0',
+    alignSelf: 'flex-start',
+    padding: '0',
+    lineHeight: '1',
+  });
+  dismissBtn.title = I18n.t('ach-toast-btn-dismiss');
+  dismissBtn.textContent = '✕';
+  dismissBtn.addEventListener('click', () => slideOut());
+
+  topRow.appendChild(icon);
+  topRow.appendChild(body);
+  topRow.appendChild(dismissBtn);
+
+  // ── Bottom row: action buttons ───────────────────────────────────────────
+  const btnRow = document.createElement('div');
+  Object.assign(btnRow.style, {
+    display: 'flex', gap: '6px', justifyContent: 'flex-end',
+  });
+
+  const makeBtn = (label) => {
+    const b = document.createElement('button');
+    Object.assign(b.style, {
+      background: 'rgba(255,255,255,0.20)',
+      border: '1px solid rgba(255,255,255,0.35)',
+      color: '#fff',
+      borderRadius: '6px',
+      padding: '4px 10px',
+      fontSize: '12px',
+      cursor: 'pointer',
+      fontFamily: 'inherit',
+      fontWeight: '600',
+      whiteSpace: 'nowrap',
+    });
+    b.textContent = label;
+    b.addEventListener('mouseenter', () => { b.style.background = 'rgba(255,255,255,0.35)'; });
+    b.addEventListener('mouseleave', () => { b.style.background = 'rgba(255,255,255,0.20)'; });
+    return b;
+  };
+
+  // "View Achievements" — shows an in-page achievement list panel
+  const viewListBtn = makeBtn(I18n.t('ach-toast-btn-view-list'));
+  viewListBtn.addEventListener('click', () => {
+    slideOut();
+    showAchievementListPanel();
+  });
+  btnRow.appendChild(viewListBtn);
+
+  // "View Reward" — only when the achievement has a reward; opens sandbox tab
+  if (def.reward) {
+    const viewRewardBtn = makeBtn(I18n.t('ach-toast-btn-view-reward'));
+    viewRewardBtn.addEventListener('click', () => {
+      slideOut();
+      chrome.runtime.sendMessage({ action: 'openSandbox' });
+    });
+    btnRow.appendChild(viewRewardBtn);
+  }
+
+  toast.appendChild(topRow);
+  toast.appendChild(btnRow);
   document.body.appendChild(toast);
+
+  // ── Auto-slide lifecycle ─────────────────────────────────────────────────
+  let dismissed = false;
+  let slideOutTimer;
+
+  function slideOut() {
+    if (dismissed) return;
+    dismissed = true;
+    clearTimeout(slideOutTimer);
+    toast.style.right = '-380px';
+    setTimeout(() => {
+      toast.remove();
+      __cbToastCount = Math.max(0, __cbToastCount - 1);
+    }, SLIDE_MS);
+  }
 
   // Slide in on next frame
   requestAnimationFrame(() => { toast.style.right = '20px'; });
 
-  // Slide out after 3.5 s, then remove
-  setTimeout(() => {
-    toast.style.right = '-320px';
-    setTimeout(() => {
-      toast.remove();
-      __cbToastCount = Math.max(0, __cbToastCount - 1);
-    }, 400);
-  }, 3500);
+  // Slide out after DISPLAY_MS
+  slideOutTimer = setTimeout(slideOut, DISPLAY_MS);
+}
+
+// ---------------------------------------------------------------------------
+// In-page achievement list panel (shown when "View Achievements" is clicked)
+// ---------------------------------------------------------------------------
+
+function showAchievementListPanel() {
+  // Only one panel at a time
+  if (document.getElementById('__cb_ach_panel__')) return;
+
+  chrome.storage.local.get(['cbAchievements'], (data) => {
+    const achievements = data.cbAchievements || {};
+
+    // ── Backdrop ──────────────────────────────────────────────────────────
+    const backdrop = document.createElement('div');
+    backdrop.id = '__cb_ach_panel__';
+    Object.assign(backdrop.style, {
+      position: 'fixed',
+      inset: '0',
+      background: 'rgba(0,0,0,0.65)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: '2147483646',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    });
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) backdrop.remove();
+    });
+
+    // ── Dialog ────────────────────────────────────────────────────────────
+    const dialog = document.createElement('div');
+    Object.assign(dialog.style, {
+      background: '#fff',
+      borderRadius: '12px',
+      boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+      width: '480px',
+      maxWidth: '90vw',
+      maxHeight: '80vh',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+      boxSizing: 'border-box',
+    });
+
+    // ── Header ────────────────────────────────────────────────────────────
+    const header = document.createElement('div');
+    Object.assign(header.style, {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '18px 20px',
+      borderBottom: '1px solid #eee',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      color: '#fff',
+      flexShrink: '0',
+    });
+
+    const headerTitle = document.createElement('h2');
+    Object.assign(headerTitle.style, {
+      margin: '0', fontSize: '17px', fontWeight: '700', color: '#fff',
+    });
+    headerTitle.textContent = I18n.t('modal-achievements-h2');
+
+    const closeBtn = document.createElement('button');
+    Object.assign(closeBtn.style, {
+      background: 'rgba(255,255,255,0.2)',
+      border: 'none',
+      color: '#fff',
+      width: '28px',
+      height: '28px',
+      borderRadius: '50%',
+      cursor: 'pointer',
+      fontSize: '14px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    });
+    closeBtn.textContent = '✕';
+    closeBtn.addEventListener('click', () => backdrop.remove());
+
+    header.appendChild(headerTitle);
+    header.appendChild(closeBtn);
+
+    // ── Achievement list ──────────────────────────────────────────────────
+    const listEl = document.createElement('div');
+    Object.assign(listEl.style, {
+      overflowY: 'auto',
+      padding: '16px',
+      flex: '1',
+    });
+
+    const unlockedCount = ACHIEVEMENT_DEFINITIONS.filter((d) => achievements[d.id]).length;
+
+    const summary = document.createElement('div');
+    Object.assign(summary.style, {
+      textAlign: 'center',
+      fontSize: '13px',
+      color: '#888',
+      marginBottom: '14px',
+      padding: '8px',
+      background: '#f8f9fa',
+      borderRadius: '6px',
+    });
+    summary.textContent = I18n.t('ach-summary', {
+      unlocked: unlockedCount,
+      total: ACHIEVEMENT_DEFINITIONS.length,
+    });
+    listEl.appendChild(summary);
+
+    for (const def of ACHIEVEMENT_DEFINITIONS) {
+      const unlockedAt = achievements[def.id];
+      const isUnlocked = !!unlockedAt;
+
+      const item = document.createElement('div');
+      Object.assign(item.style, {
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '12px',
+        padding: '12px',
+        borderRadius: '8px',
+        marginBottom: '8px',
+        border: '1px solid ' + (isUnlocked ? '#86efac' : '#eee'),
+        background: isUnlocked ? '#f0fdf4' : '#fafafa',
+        opacity: isUnlocked ? '1' : '0.65',
+      });
+
+      const itemIcon = document.createElement('div');
+      Object.assign(itemIcon.style, { fontSize: '24px', flexShrink: '0', marginTop: '1px' });
+      itemIcon.textContent = isUnlocked ? '🏆' : '🔒';
+
+      const info = document.createElement('div');
+      Object.assign(info.style, {
+        display: 'flex', flexDirection: 'column', gap: '3px', flex: '1',
+      });
+
+      const achName = document.createElement('strong');
+      Object.assign(achName.style, { fontSize: '14px', color: '#333' });
+      achName.textContent = I18n.t('ach-' + def.id + '-name');
+
+      const achDesc = document.createElement('span');
+      Object.assign(achDesc.style, { fontSize: '12px', color: '#666' });
+      achDesc.textContent = I18n.t('ach-' + def.id + '-desc');
+
+      const rewardText = def.reward
+        ? I18n.t('ach-reward-' + def.reward)
+        : I18n.t('ach-reward-none');
+      const achReward = document.createElement('span');
+      Object.assign(achReward.style, { fontSize: '11px', color: '#999', fontStyle: 'italic' });
+      achReward.textContent = I18n.t('ach-reward-label') + ' ' + rewardText;
+
+      info.appendChild(achName);
+      info.appendChild(achDesc);
+      info.appendChild(achReward);
+
+      if (unlockedAt) {
+        const achDate = document.createElement('span');
+        Object.assign(achDate.style, { fontSize: '11px', color: '#22c55e', fontWeight: '600', marginTop: '2px' });
+        achDate.textContent = I18n.t('ach-unlocked-on') + ' ' + new Date(unlockedAt).toLocaleString(I18n.locale());
+        info.appendChild(achDate);
+      }
+
+      item.appendChild(itemIcon);
+      item.appendChild(info);
+      listEl.appendChild(item);
+    }
+
+    dialog.appendChild(header);
+    dialog.appendChild(listEl);
+    backdrop.appendChild(dialog);
+    document.body.appendChild(backdrop);
+  });
 }
 
 function recordCorrection() {
