@@ -1157,6 +1157,20 @@ document.addEventListener('DOMContentLoaded', () => {
     checkEasterEgg();
   });
 
+  // Re-render word trail overlays after any scroll so they track their words.
+  // Throttled via rAF to avoid redundant repaints within the same frame.
+  let _sandboxTrailScrollRaf = null;
+  const _reRenderTrailOnScroll = () => {
+    if (!secretOptions.wordTrail || !wordTrailEntries.length) return;
+    if (_sandboxTrailScrollRaf) return;
+    _sandboxTrailScrollRaf = requestAnimationFrame(() => {
+      _sandboxTrailScrollRaf = null;
+      renderWordTrailSandbox();
+    });
+  };
+  window.addEventListener('scroll', _reRenderTrailOnScroll, { passive: true });
+  testArea.addEventListener('scroll', _reRenderTrailOnScroll, { passive: true });
+
   document.getElementById('clearTextBtn').addEventListener('click', () => {
     testArea.value = '';
     testArea.focus();

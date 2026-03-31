@@ -4,6 +4,9 @@
   padding: 0;
 }
 
+/* Ensure the [hidden] attribute is always respected regardless of CSS display rules */
+[hidden] { display: none !important; }
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: #f5f7fa;
@@ -309,23 +312,22 @@ textarea#testArea:focus {
 
 .correction-word-flash {
   position: absolute;
-  background: rgba(39, 174, 96, 0.35);
-  border-radius: 3px;
+  background: transparent;
+  border: 2px solid rgba(74, 144, 217, 0.85);
+  border-radius: 4px;
   pointer-events: none;
-  z-index: 2;
-  animation: word-flash 1.5s ease-out forwards;
+  z-index: 10;
+  animation: word-ring 1.5s ease-out forwards;
 }
 
-@keyframes word-flash {
+@keyframes word-ring {
   0% {
-    opacity: 1;
-  }
-
-  70% {
-    opacity: 0.6;
+    transform: scale(1);
+    opacity: 0.9;
   }
 
   100% {
+    transform: scale(1.35);
     opacity: 0;
   }
 }

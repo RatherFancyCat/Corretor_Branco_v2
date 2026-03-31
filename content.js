@@ -101,7 +101,20 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 loadSettings();
 
-// Listen for the skip-capitalisation keybind and the Alt+Q cursor locator keybind.
+// Re-render word trail overlays after any scroll so they track their words.
+// capture:true ensures we catch scrolls on inner scrollable elements too.
+// Throttled via rAF to avoid redundant repaints within the same frame.
+let _trailScrollRaf = null;
+window.addEventListener('scroll', () => {
+  if (!secretOptions.wordTrail || !wordTrailEntries.length) return;
+  if (_trailScrollRaf) return;
+  _trailScrollRaf = requestAnimationFrame(() => {
+    _trailScrollRaf = null;
+    renderWordTrailOverlays();
+  });
+}, { passive: true, capture: true });
+
+
 // Uses capture so it fires even when a text field has focus.
 document.addEventListener('keydown', (e) => {
   if (!enabled || blockedByDomain) return;
@@ -555,6 +568,9 @@ function ensureContentStyles() {
     '100%{opacity:0;transform:translateY(-60px) scale(1.5) rotate(20deg)}}' +
     '@keyframes __cb_word_flash__{' +
     '0%{opacity:.7}100%{opacity:0}}' +
+    '@keyframes __cb_word_ring__{' +
+    '0%{transform:scale(1);opacity:.9}' +
+    '100%{transform:scale(1.35);opacity:0}}' +
     '@keyframes __cb_cursor_beacon__{' +
     '0%{opacity:1;transform:translateY(0)}' +
     '60%{opacity:1;transform:translateY(-5px)}' +
@@ -637,14 +653,15 @@ function highlightCorrectedWord(element, wordStart, wordLength) {
     top: markRect.top + 'px',
     width: markRect.width + 'px',
     height: markRect.height + 'px',
-    background: 'rgba(39,174,96,0.4)',
-    borderRadius: '2px',
+    background: 'transparent',
+    border: '2px solid rgba(74,144,217,0.85)',
+    borderRadius: '4px',
     pointerEvents: 'none',
     zIndex: '2147483647',
-    animation: '__cb_word_flash__ 5.5s ease-out forwards',
+    animation: '__cb_word_ring__ 1.5s ease-out forwards',
   });
   document.body.appendChild(hl);
-  setTimeout(() => hl.remove(), 5500);
+  setTimeout(() => hl.remove(), 1500);
 }
 
 /**
@@ -673,11 +690,12 @@ function highlightCorrectedWordCE(node, wordStart, wordLength) {
     top: markRect.top + 'px',
     width: markRect.width + 'px',
     height: markRect.height + 'px',
-    background: 'rgba(39,174,96,0.4)',
-    borderRadius: '2px',
+    background: 'transparent',
+    border: '2px solid rgba(74,144,217,0.85)',
+    borderRadius: '4px',
     pointerEvents: 'none',
     zIndex: '2147483647',
-    animation: '__cb_word_flash__ 1.5s ease-out forwards',
+    animation: '__cb_word_ring__ 1.5s ease-out forwards',
   });
   document.body.appendChild(hl);
   setTimeout(() => hl.remove(), 1500);
