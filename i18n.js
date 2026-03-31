@@ -107,7 +107,7 @@ const TRANSLATIONS = {
     // Achievement modal – runtime strings
     'ach-summary': '{unlocked} / {total} desbloqueadas',
     'ach-reward-label': 'Recompensa:',
-    'ach-reward-none': 'Nenhuma',
+    'ach-reward-none': 'Nenhuma... Por Agora... :)',
     'ach-reward-wordtrail': '🐍 Rasto de Palavras',
     'ach-reward-wordtrailcolor': '🎨 Cor Personalizada do Rasto',
     'ach-reward-wordtrailrgb': '🌈 Rasto Arco-Íris',
@@ -250,7 +250,7 @@ const TRANSLATIONS = {
     // Achievement modal – runtime strings
     'ach-summary': '{unlocked} / {total} unlocked',
     'ach-reward-label': 'Reward:',
-    'ach-reward-none': 'None',
+    'ach-reward-none': 'None... For Now... :)',
     'ach-reward-wordtrail': '🐍 Word Trail',
     'ach-reward-wordtrailcolor': '🎨 Custom Trail Colour',
     'ach-reward-wordtrailrgb': '🌈 Rainbow Trail',
@@ -391,7 +391,7 @@ const TRANSLATIONS = {
     // Achievement modal – runtime strings
     'ach-summary': '{unlocked} / {total} desbloqueados',
     'ach-reward-label': 'Recompensa:',
-    'ach-reward-none': 'Ninguna',
+    'ach-reward-none': 'Ninguna... Por Ahora... :)',
     'ach-reward-wordtrail': '🐍 Rastro de Palabras',
     'ach-reward-wordtrailcolor': '🎨 Color Personalizado del Rastro',
     'ach-reward-wordtrailrgb': '🌈 Rastro Arcoíris',
@@ -534,7 +534,7 @@ const TRANSLATIONS = {
     // Achievement modal – runtime strings
     'ach-summary': '{unlocked} / {total} débloqués',
     'ach-reward-label': 'Récompense\u00A0:',
-    'ach-reward-none': 'Aucune',
+    'ach-reward-none': 'Aucune... Pour l\'instant... :)',
     'ach-reward-wordtrail': '🐍 Traînée de mots',
     'ach-reward-wordtrailcolor': '🎨 Couleur personnalisée',
     'ach-reward-wordtrailrgb': '🌈 Traînée arc-en-ciel',
@@ -675,7 +675,7 @@ const TRANSLATIONS = {
     // Achievement modal – runtime strings
     'ach-summary': '{unlocked} / {total} freigeschaltet',
     'ach-reward-label': 'Belohnung:',
-    'ach-reward-none': 'Keine',
+    'ach-reward-none': 'Keine... Für Jetzt... :)',
     'ach-reward-wordtrail': '🐍 Wortspur',
     'ach-reward-wordtrailcolor': '🎨 Benutzerdefinierte Spurfarbe',
     'ach-reward-wordtrailrgb': '🌈 Regenbogen-Spur',
@@ -818,7 +818,7 @@ const TRANSLATIONS = {
     // Achievement modal – runtime strings
     'ach-summary': '{unlocked} / {total} 已解锁',
     'ach-reward-label': '奖励：',
-    'ach-reward-none': '无',
+    'ach-reward-none': '无... 暂时没有... :)',
     'ach-reward-wordtrail': '🐍 单词轨迹',
     'ach-reward-wordtrailcolor': '🎨 自定义轨迹颜色',
     'ach-reward-wordtrailrgb': '🌈 彩虹轨迹',
