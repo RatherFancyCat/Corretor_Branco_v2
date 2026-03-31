@@ -468,13 +468,21 @@ function recordCorrection() {
     const stats = data.cbStats || { wordsAdded: 0, correctionsApplied: 0 };
     stats.correctionsApplied = (stats.correctionsApplied || 0) + 1;
 
+    // Increment XP whenever the XP bar feature is enabled, regardless of which page the
+    // correction happened on. Previously this was only done in sandbox.js, causing XP to
+    // be skipped for corrections made on other pages.
+    const opts = data.secretOptions || { revealed: false, highlightCorrections: false, correctionFlair: false };
+    let secretChanged = false;
+    if (opts.xpBar) {
+      opts.xpBarXp = (opts.xpBarXp || 0) + 1;
+      secretChanged = true;
+    }
+
     const currentAchievements = data.cbAchievements || {};
     const { newlyUnlocked, updated } = processAchievements(stats, currentAchievements);
 
     if (newlyUnlocked.length > 0) {
       // Grant any rewards and mark the secret panel as revealed
-      const opts = data.secretOptions || { revealed: false, highlightCorrections: false, correctionFlair: false };
-      let secretChanged = false;
       newlyUnlocked.forEach((id) => {
         const def = ACHIEVEMENT_DEFINITIONS.find((d) => d.id === id);
         if (!def) return;
@@ -508,7 +516,12 @@ function recordCorrection() {
         });
       });
     } else {
-      chrome.storage.local.set({ cbStats: stats });
+      const toSave = { cbStats: stats };
+      if (secretChanged) {
+        toSave.secretOptions = opts;
+        secretOptions = opts;
+      }
+      chrome.storage.local.set(toSave);
     }
   });
 }
