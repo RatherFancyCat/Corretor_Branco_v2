@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="pt">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title data-i18n="extension-sandbox-title">Corretor Branco – Área de Teste</title>
   <link rel="stylesheet" href="sandbox.css">
 </head>
+
 <body>
   <header>
     <div class="header-inner">
@@ -32,13 +34,9 @@
           um espaço ou pontuação depois delas.
         </p>
         <div class="textarea-wrapper">
-          <textarea id="testArea"
-                    data-i18n-placeholder="sandbox-area-ph"
-                    placeholder="Comece a escrever aqui… ex: escreva uma palavra com erro e prima Espaço."
-                    spellcheck="false"
-                    autocorrect="off"
-                    autocomplete="off"
-                    autocapitalize="off"></textarea>
+          <textarea id="testArea" data-i18n-placeholder="sandbox-area-ph"
+            placeholder="Comece a escrever aqui… ex: escreva uma palavra com erro e prima Espaço." spellcheck="false"
+            autocorrect="off" autocomplete="off" autocapitalize="off"></textarea>
         </div>
 
         <div class="correction-log">
@@ -72,43 +70,24 @@
         <h2 data-i18n="secret-panel-title">Super Secret Options</h2>
         <span class="secret-tag" data-i18n="secret-panel-tag">UNLOCKED</span>
       </div>
-      <p class="secret-subtitle" data-i18n="secret-panel-subtitle">You unlocked these features through your achievements!</p>
+      <p class="secret-subtitle" data-i18n="secret-panel-subtitle">You unlocked these features through your
+        achievements!</p>
       <div class="secret-opts">
-        <div id="optWordTrailRow" hidden>
-          <label class="secret-opt">
-            <input type="checkbox" id="optWordTrail">
-            <div>
-              <strong data-i18n="secret-opt-wordtrail-name">🐍 Word Trail</strong>
-              <span data-i18n="secret-opt-wordtrail-desc">Highlights the 5 most recently typed words with decreasing opacity</span>
-            </div>
-          </label>
-          <div id="wordTrailColorRow" class="secret-keybind-row" hidden>
-            <span class="secret-keybind-label" data-i18n="secret-opt-wordtrail-color-label">Trail Colour</span>
-            <input type="color" id="wordTrailColorInput" class="secret-color-input" value="#4C90D6">
-          </div>
-          <div id="wordTrailRgbRow" hidden>
-            <label class="secret-opt secret-opt-sub">
-              <input type="checkbox" id="optWordTrailRgb">
-              <div>
-                <strong data-i18n="secret-opt-wordtrail-rgb-name">🌈 Rainbow Mode</strong>
-                <span data-i18n="secret-opt-wordtrail-rgb-desc">Automatically cycles the trail colour with every typed word</span>
-              </div>
-            </label>
-          </div>
-        </div>
         <div id="optCursorLocatorRow" hidden>
           <label class="secret-opt">
             <input type="checkbox" id="optCursorLocator">
             <div>
               <strong data-i18n="secret-opt-cursorlocator-name">🎯 Cursor Locator</strong>
-              <span data-i18n="secret-opt-cursorlocator-desc">Press the configured keybind to show exactly where you are typing on the page</span>
+              <span data-i18n="secret-opt-cursorlocator-desc">Press the configured keybind to show exactly where you are
+                typing on the page</span>
             </div>
           </label>
           <div id="cursorLocatorKeyRow" class="secret-keybind-row" hidden>
             <span class="secret-keybind-label" data-i18n="secret-opt-cursorlocator-keybind-label">Keybind</span>
             <div class="secret-keybind-widget">
               <input type="text" id="cursorLocatorKeyInput" class="secret-keybind-input" readonly value="Alt+Q">
-              <button id="cursorLocatorRecordBtn" class="btn btn-sm btn-secondary" data-i18n="secret-opt-cursorlocator-record-btn">Record</button>
+              <button id="cursorLocatorRecordBtn" class="btn btn-sm btn-secondary"
+                data-i18n="secret-opt-cursorlocator-record-btn">Record</button>
             </div>
           </div>
         </div>
@@ -126,6 +105,30 @@
             <span data-i18n="secret-opt-flair-desc">Show a sparkle animation whenever a word is corrected</span>
           </div>
         </label>
+        <div id="optWordTrailRow" hidden>
+          <label class="secret-opt">
+            <input type="checkbox" id="optWordTrail">
+            <div>
+              <strong data-i18n="secret-opt-wordtrail-name">🐍 Word Trail</strong>
+              <span data-i18n="secret-opt-wordtrail-desc">Highlights the 5 most recently typed words with decreasing
+                opacity</span>
+              <div id="wordTrailColorRow" hidden>
+                <span data-i18n="secret-opt-wordtrail-color-label">Trail Colour</span>
+                <input type="color" id="wordTrailColorInput" class="secret-color-input" value="#4C90D6">
+              </div>
+            </div>
+          </label>
+          <div id="wordTrailRgbRow" hidden>
+            <label class="secret-opt secret-opt-sub">
+              <input type="checkbox" id="optWordTrailRgb">
+              <div>
+                <strong data-i18n="secret-opt-wordtrail-rgb-name">🌈 Rainbow Mode</strong>
+                <span data-i18n="secret-opt-wordtrail-rgb-desc">Automatically cycles the trail colour with every typed
+                  word</span>
+              </div>
+            </label>
+          </div>
+        </div>
         <label class="secret-opt" id="optXpBarRow" hidden>
           <input type="checkbox" id="optXpBar">
           <div class="xpbar-opt-body">
@@ -139,7 +142,8 @@
                 <span class="xpbar-lvl-number" id="xpBarLevel">1</span>
               </span>
             </div>
-            <span data-i18n="secret-opt-xpbar-desc" id="xpBarDesc">Displays a progress bar and level based on corrections applied</span>
+            <span data-i18n="secret-opt-xpbar-desc" id="xpBarDesc">Displays a progress bar and level based on
+              corrections applied</span>
           </div>
         </label>
       </div>
@@ -151,4 +155,5 @@
   <script src="achievements.js"></script>
   <script src="sandbox.js"></script>
 </body>
+
 </html>
