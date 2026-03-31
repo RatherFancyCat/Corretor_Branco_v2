@@ -18,6 +18,9 @@ let secretOptions = {
   xpBarXp: 0,
   cursorLocator: false,
   cursorLocatorKey: DEFAULT_CURSOR_LOCATOR_KEY,
+  wordTrail: false,
+  wordTrailColor: '#4C90D6',
+  wordTrailRgb: false,
 };
 let cbStats = { wordsAdded: 0, correctionsApplied: 0 };
 let cbAchievements = {};
@@ -86,6 +89,9 @@ function loadAll(callback) {
         xpBarXp: 0,
         cursorLocator: false,
         cursorLocatorKey: DEFAULT_CURSOR_LOCATOR_KEY,
+        wordTrail: false,
+        wordTrailColor: '#4C90D6',
+        wordTrailRgb: false,
       };
       cbStats = data.cbStats || { wordsAdded: 0, correctionsApplied: 0 };
       cbAchievements = data.cbAchievements || {};
@@ -358,6 +364,7 @@ function checkEasterEgg() {
   secretOptions.correctionFlair = true;
   secretOptions.xpBar = true;
   secretOptions.cursorLocator = true;
+  secretOptions.wordTrail = true;
   secretOptions.revealed = true;
   saveSecretOptions();
 
@@ -505,6 +512,148 @@ function showCursorLocatorSandbox() {
   setTimeout(() => { arrow.remove(); ring.remove(); }, 2500);
 }
 
+// ---------------------------------------------------------------------------
+// Word Trail
+// ---------------------------------------------------------------------------
+
+const WORD_TRAIL_OPACITIES = [0.70, 0.50, 0.30, 0.20, 0.10];
+const WORD_TRAIL_DEFAULT_COLOR = '#4C90D6';
+
+// Trail state – kept in memory, not persisted
+let wordTrailEntries = []; // [{ start, length, hue }, ...] most recent first
+let wordTrailRgbHue = 0;   // in-memory hue (0–360), advances per word
+
+/** Convert #rrggbb + alpha to an rgba() colour string. */
+function hexToRgbaSandbox(hex, alpha) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+/** Remove all current word trail overlays from the document. */
+function clearWordTrailOverlaysSandbox() {
+  document.querySelectorAll('[data-cb-trail]').forEach((el) => el.remove());
+}
+
+/**
+ * Re-render all trail overlays for the sandbox test area.
+ * Uses position:fixed overlays (viewport-relative) for simplicity.
+ */
+function renderWordTrailSandbox() {
+  clearWordTrailOverlaysSandbox();
+  if (!wordTrailEntries.length) return;
+
+  const element = document.getElementById('testArea');
+  if (!element) return;
+
+  const cs = window.getComputedStyle(element);
+  const STYLE_PROPS = [
+    'boxSizing', 'width',
+    'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+    'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
+    'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing',
+    'wordSpacing', 'tabSize', 'lineHeight',
+  ];
+
+  wordTrailEntries.forEach(({ start, length, hue }, i) => {
+    const opacity = WORD_TRAIL_OPACITIES[i];
+
+    const mirror = document.createElement('div');
+    STYLE_PROPS.forEach((p) => { mirror.style[p] = cs[p]; });
+    const elRect = element.getBoundingClientRect();
+    Object.assign(mirror.style, {
+      position: 'fixed',
+      top: elRect.top + 'px',
+      left: elRect.left + 'px',
+      visibility: 'hidden',
+      overflow: 'hidden',
+      height: element.offsetHeight + 'px',
+      whiteSpace: 'pre-wrap',
+      wordWrap: 'break-word',
+    });
+
+    const text = element.value;
+    const markEl = document.createElement('mark');
+    markEl.textContent = text.substring(start, start + length);
+    mirror.appendChild(document.createTextNode(text.substring(0, start)));
+    mirror.appendChild(markEl);
+    document.body.appendChild(mirror);
+    mirror.scrollTop = element.scrollTop;
+    const markRect = markEl.getBoundingClientRect();
+    mirror.remove();
+
+    if (markRect.width === 0 || markRect.height === 0) return;
+
+    let bgColor;
+    if (hue >= 0) {
+      bgColor = `hsla(${hue},100%,60%,${opacity})`;
+    } else {
+      const base = (secretOptions.wordTrailColor && /^#[0-9a-fA-F]{6}$/.test(secretOptions.wordTrailColor))
+        ? secretOptions.wordTrailColor
+        : WORD_TRAIL_DEFAULT_COLOR;
+      bgColor = hexToRgbaSandbox(base, opacity);
+    }
+
+    const overlay = document.createElement('div');
+    overlay.setAttribute('data-cb-trail', '1');
+    Object.assign(overlay.style, {
+      position: 'fixed',
+      left: markRect.left + 'px',
+      top: markRect.top + 'px',
+      width: markRect.width + 'px',
+      height: markRect.height + 'px',
+      background: bgColor,
+      borderRadius: '2px',
+      pointerEvents: 'none',
+      zIndex: '2',
+    });
+    document.body.appendChild(overlay);
+  });
+}
+
+/**
+ * Detect the most recently completed word in the test area (at a separator
+ * boundary) and add it to the trail.  Called from the testArea input handler
+ * on every keystroke — independently of whether a correction was made.
+ */
+function trackWordTrailSandbox(element) {
+  if (!secretOptions.wordTrail) return;
+
+  const value = element.value;
+  const cursorPos = element.selectionStart;
+  if (cursorPos === null || cursorPos === undefined) return;
+
+  const charBefore = value[cursorPos - 1];
+  if (!charBefore || !SEPARATOR_RE.test(charBefore)) return;
+
+  const textBefore = value.substring(0, cursorPos - 1);
+  const wordMatch = textBefore.match(/(\S+)$/);
+  if (!wordMatch) return;
+
+  const rawToken = wordMatch[1];
+  const strippedLeading = rawToken.replace(LEADING_PUNCT_RE, '');
+  const word = strippedLeading.replace(TRAILING_PUNCT_RE, '');
+  if (!word) return;
+
+  const leadingLen = rawToken.length - strippedLeading.length;
+  const wordStart = cursorPos - 1 - rawToken.length + leadingLen;
+
+  // Advance RGB hue if the rainbow mode is on
+  if (secretOptions.wordTrailRgb) {
+    wordTrailRgbHue = (wordTrailRgbHue + 30) % 360;
+  }
+
+  const hue = secretOptions.wordTrailRgb ? wordTrailRgbHue : -1;
+  wordTrailEntries.unshift({ start: wordStart, length: word.length, hue });
+  if (wordTrailEntries.length > WORD_TRAIL_OPACITIES.length) {
+    wordTrailEntries.length = WORD_TRAIL_OPACITIES.length;
+  }
+
+  renderWordTrailSandbox();
+}
+
 function incrementCorrections() {
   chrome.storage.local.get('cbStats', (data) => {
     const stats = data.cbStats || { wordsAdded: 0, correctionsApplied: 0 };
@@ -582,6 +731,8 @@ function checkAndSaveAchievements() {
       } else if (def.reward === 'xpbar') {
         shouldReveal = true;
       } else if (def.reward === 'cursorlocator') {
+        shouldReveal = true;
+      } else if (def.reward === 'wordtrail' || def.reward === 'wordtrailcolor' || def.reward === 'wordtrailrgb') {
         shouldReveal = true;
       }
 
@@ -898,15 +1049,20 @@ function updateSecretUI() {
   const flairEarned = ACHIEVEMENT_DEFINITIONS.some((d) => d.reward === 'flair' && cbAchievements[d.id]);
   const xpBarEarned = ACHIEVEMENT_DEFINITIONS.some((d) => d.reward === 'xpbar' && cbAchievements[d.id]);
   const cursorLocatorEarned = ACHIEVEMENT_DEFINITIONS.some((d) => d.reward === 'cursorlocator' && cbAchievements[d.id]);
+  const wordTrailEarned = ACHIEVEMENT_DEFINITIONS.some((d) => d.reward === 'wordtrail' && cbAchievements[d.id]);
+  const wordTrailColorEarned = ACHIEVEMENT_DEFINITIONS.some((d) => d.reward === 'wordtrailcolor' && cbAchievements[d.id]);
+  const wordTrailRgbEarned = ACHIEVEMENT_DEFINITIONS.some((d) => d.reward === 'wordtrailrgb' && cbAchievements[d.id]);
 
   const highlightRow = document.getElementById('optHighlightRow');
   const flairRow = document.getElementById('optFlairRow');
   const xpBarRow = document.getElementById('optXpBarRow');
   const cursorLocatorRow = document.getElementById('optCursorLocatorRow');
+  const wordTrailRow = document.getElementById('optWordTrailRow');
   if (highlightRow) highlightRow.hidden = !highlightEarned;
   if (flairRow) flairRow.hidden = !flairEarned;
   if (xpBarRow) xpBarRow.hidden = !xpBarEarned;
   if (cursorLocatorRow) cursorLocatorRow.hidden = !cursorLocatorEarned;
+  if (wordTrailRow) wordTrailRow.hidden = !wordTrailEarned;
 
   // Show/hide and hydrate the cursor locator keybind row
   const cursorLocatorKeyRow = document.getElementById('cursorLocatorKeyRow');
@@ -920,6 +1076,20 @@ function updateSecretUI() {
   if (xpBarWidget) xpBarWidget.hidden = !secretOptions.xpBar;
   if (xpBarDesc) xpBarDesc.hidden = !!secretOptions.xpBar;
   if (secretOptions.xpBar) updateXpBar();
+
+  // Word trail: sync checkbox, colour picker, and RGB toggle visibility
+  const optWordTrail = document.getElementById('optWordTrail');
+  const optWordTrailRgb = document.getElementById('optWordTrailRgb');
+  if (optWordTrail) optWordTrail.checked = !!secretOptions.wordTrail;
+  if (optWordTrailRgb) optWordTrailRgb.checked = !!secretOptions.wordTrailRgb;
+
+  const wordTrailColorRow = document.getElementById('wordTrailColorRow');
+  const wordTrailColorInput = document.getElementById('wordTrailColorInput');
+  if (wordTrailColorRow) wordTrailColorRow.hidden = !(wordTrailColorEarned && secretOptions.wordTrail);
+  if (wordTrailColorInput) wordTrailColorInput.value = secretOptions.wordTrailColor || WORD_TRAIL_DEFAULT_COLOR;
+
+  const wordTrailRgbRow = document.getElementById('wordTrailRgbRow');
+  if (wordTrailRgbRow) wordTrailRgbRow.hidden = !(wordTrailRgbEarned && secretOptions.wordTrail);
 }
 
 // ---------------------------------------------------------------------------
@@ -968,6 +1138,7 @@ document.addEventListener('DOMContentLoaded', () => {
   testArea.addEventListener('input', (event) => {
     if (applying) return;
     if (Object.keys(wordMap).length > 0) correctTextarea(testArea);
+    trackWordTrailSandbox(testArea);
     if (settings.autoCapitalize) {
       // Reset skip flag when a sentence-ending character or newline is typed
       if (skipCapForThisSentence && settings.skipCapEnabled) {
@@ -991,6 +1162,9 @@ document.addEventListener('DOMContentLoaded', () => {
     testArea.focus();
     const log = document.getElementById('correctionLog');
     log.innerHTML = `<li class="no-corrections">${I18n.t('sandbox-no-corrections')}</li>`;
+    // Clear word trail
+    wordTrailEntries = [];
+    clearWordTrailOverlaysSandbox();
   });
 
   // Secret option checkboxes
@@ -1016,6 +1190,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const cursorLocatorKeyRow = document.getElementById('cursorLocatorKeyRow');
     if (cursorLocatorKeyRow) cursorLocatorKeyRow.hidden = !e.target.checked;
     saveSecretOptions();
+  });
+
+  // Word trail option
+  document.getElementById('optWordTrail').addEventListener('change', (e) => {
+    secretOptions.wordTrail = e.target.checked;
+    saveSecretOptions();
+    if (!secretOptions.wordTrail) {
+      wordTrailEntries = [];
+      clearWordTrailOverlaysSandbox();
+    }
+    updateSecretUI();
+  });
+
+  document.getElementById('wordTrailColorInput').addEventListener('input', (e) => {
+    secretOptions.wordTrailColor = e.target.value;
+    saveSecretOptions();
+    if (secretOptions.wordTrail) renderWordTrailSandbox();
+  });
+
+  document.getElementById('optWordTrailRgb').addEventListener('change', (e) => {
+    secretOptions.wordTrailRgb = e.target.checked;
+    saveSecretOptions();
+    if (secretOptions.wordTrail) renderWordTrailSandbox();
   });
 
   // Cursor locator keybind recording

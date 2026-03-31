@@ -288,7 +288,25 @@ textarea#testArea:focus {
   color: #fff;
 }
 
-/* ---- Word highlight flash – small overlay positioned over the corrected word ---- */
+/* ---- Word Trail colour picker ---- */
+.secret-color-input {
+  width: 40px;
+  height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0 2px;
+  background: transparent;
+}
+
+/* ---- Sub-option inside a parent secret-opt row ---- */
+.secret-opt-sub {
+  margin-top: 4px;
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+
 .correction-word-flash {
   position: absolute;
   background: rgba(39, 174, 96, 0.35);

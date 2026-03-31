@@ -45,8 +45,8 @@ const ACHIEVEMENT_DEFINITIONS = [
   {
     id: 'corrections-50',
     name: 'Fifty Fixes',
-    desc: 'Have 50 words corrected',
-    reward: null,
+    desc: 'Have 50 words corrected — unlocks Word Trail',
+    reward: 'wordtrail',
     check: (s) => s.correctionsApplied >= 50,
   },
   {
@@ -59,8 +59,8 @@ const ACHIEVEMENT_DEFINITIONS = [
   {
     id: 'corrections-500',
     name: 'Half Thousand',
-    desc: 'Have 500 words corrected',
-    reward: null,
+    desc: 'Have 500 words corrected — unlocks Word Trail custom colour',
+    reward: 'wordtrailcolor',
     check: (s) => s.correctionsApplied >= 500,
   },
   {
@@ -73,8 +73,8 @@ const ACHIEVEMENT_DEFINITIONS = [
   {
     id: 'corrections-5000',
     name: 'Five Thousand',
-    desc: 'Have 5,000 words corrected',
-    reward: null,
+    desc: 'Have 5,000 words corrected — unlocks Word Trail rainbow mode',
+    reward: 'wordtrailrgb',
     check: (s) => s.correctionsApplied >= 5000,
   },
   {

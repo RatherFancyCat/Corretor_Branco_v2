@@ -10,7 +10,7 @@ let currentLang = 'pt';
 let applying = false;
 
 const FLAIR_OPTIONS = ['✨', '🎉', '⭐', '💫', '✅'];
-let secretOptions = { revealed: false, highlightCorrections: false, correctionFlair: false };
+let secretOptions = { revealed: false, highlightCorrections: false, correctionFlair: false, wordTrail: false, wordTrailColor: '#4C90D6', wordTrailRgb: false };
 
 // Flag to suppress auto-capitalisation for the current sentence.
 // Set by the user's keybind; cleared on the next sentence-ending character.
@@ -72,7 +72,7 @@ function loadSettings() {
     enabled = data.enabled !== false;
     settings = data.settings || { autoCapitalize: false, blacklistedDomains: [] };
     currentLang = data.language || 'pt';
-    secretOptions = data.secretOptions || { revealed: false, highlightCorrections: false, correctionFlair: false };
+    secretOptions = data.secretOptions || { revealed: false, highlightCorrections: false, correctionFlair: false, wordTrail: false, wordTrailColor: '#4C90D6', wordTrailRgb: false };
     checkDomainBlock();
   });
 }
@@ -89,7 +89,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
     checkDomainBlock();
   }
   if (changes.language) currentLang = changes.language.newValue || 'pt';
-  if (changes.secretOptions) secretOptions = changes.secretOptions.newValue || secretOptions;
+  if (changes.secretOptions) {
+    const prev = secretOptions;
+    secretOptions = changes.secretOptions.newValue || secretOptions;
+    if (prev.wordTrail && !secretOptions.wordTrail) {
+      clearWordTrailOverlays();
+      wordTrailEntries = [];
+    }
+  }
 });
 
 loadSettings();
@@ -471,7 +478,7 @@ function recordCorrection() {
     // Increment XP whenever the XP bar feature is enabled, regardless of which page the
     // correction happened on. Previously this was only done in sandbox.js, causing XP to
     // be skipped for corrections made on other pages.
-    const opts = data.secretOptions || { revealed: false, highlightCorrections: false, correctionFlair: false };
+    const opts = data.secretOptions || { revealed: false, highlightCorrections: false, correctionFlair: false, wordTrail: false, wordTrailColor: '#4C90D6', wordTrailRgb: false };
     let secretChanged = false;
     if (opts.xpBar) {
       opts.xpBarXp = (opts.xpBarXp || 0) + 1;
@@ -494,7 +501,11 @@ function recordCorrection() {
           opts.correctionFlair = true;
           opts.revealed = true;
           secretChanged = true;
-        } else if ((def.reward === 'xpbar' || def.reward === 'cursorlocator') && !opts.revealed) {
+        } else if (
+          (def.reward === 'xpbar' || def.reward === 'cursorlocator' ||
+           def.reward === 'wordtrail' || def.reward === 'wordtrailcolor' ||
+           def.reward === 'wordtrailrgb') && !opts.revealed
+        ) {
           opts.revealed = true;
           secretChanged = true;
         }
@@ -762,8 +773,199 @@ function showCursorLocator(el) {
 }
 
 // ---------------------------------------------------------------------------
-// Correction logic
+// Word Trail
 // ---------------------------------------------------------------------------
+
+const WORD_TRAIL_OPACITIES = [0.70, 0.50, 0.30, 0.20, 0.10];
+const WORD_TRAIL_DEFAULT_COLOR = '#4C90D6';
+
+// Trail state – in-memory only, per-tab
+// Each entry: { type: 'input', element, start, length, hue }
+//          or { type: 'ce',    node,    start, length, hue }
+let wordTrailEntries = [];
+let wordTrailRgbHue = 0; // advances 30° per word, not persisted
+
+/** Convert #rrggbb to rgba() with the given alpha. */
+function hexToRgba(hex, alpha) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+/** Remove all word trail overlays injected by this script. */
+function clearWordTrailOverlays() {
+  document.querySelectorAll('[data-cb-trail]').forEach((el) => el.remove());
+}
+
+const TRAIL_STYLE_PROPS = [
+  'boxSizing', 'width',
+  'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+  'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
+  'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing',
+  'wordSpacing', 'tabSize', 'lineHeight',
+];
+
+/**
+ * Re-render all trail overlays.  Called every time a new word is added so
+ * positions are always fresh (relative to the current viewport).
+ */
+function renderWordTrailOverlays() {
+  clearWordTrailOverlays();
+  if (!wordTrailEntries.length) return;
+  ensureContentStyles();
+
+  wordTrailEntries.forEach(({ type, element, node, start, length, hue }, i) => {
+    const opacity = WORD_TRAIL_OPACITIES[i];
+    let markRect = null;
+
+    if (type === 'input') {
+      if (!element.isConnected) return;
+      const cs = window.getComputedStyle(element);
+      const mirror = document.createElement('div');
+      TRAIL_STYLE_PROPS.forEach((p) => { mirror.style[p] = cs[p]; });
+      const elRect = element.getBoundingClientRect();
+      Object.assign(mirror.style, {
+        position: 'fixed',
+        top: elRect.top + 'px',
+        left: elRect.left + 'px',
+        visibility: 'hidden',
+        overflow: 'hidden',
+        height: element.offsetHeight + 'px',
+        whiteSpace: 'pre-wrap',
+        wordWrap: 'break-word',
+      });
+      const text = element.value;
+      const markEl = document.createElement('mark');
+      markEl.textContent = text.substring(start, start + length);
+      mirror.appendChild(document.createTextNode(text.substring(0, start)));
+      mirror.appendChild(markEl);
+      document.body.appendChild(mirror);
+      mirror.scrollTop = element.scrollTop;
+      markRect = markEl.getBoundingClientRect();
+      mirror.remove();
+    } else {
+      // contenteditable text node
+      if (!node.isConnected) return;
+      const startOffset = Math.min(start, node.textContent.length);
+      const endOffset = Math.min(start + length, node.textContent.length);
+      if (startOffset >= endOffset) return;
+      const range = document.createRange();
+      range.setStart(node, startOffset);
+      range.setEnd(node, endOffset);
+      markRect = range.getBoundingClientRect();
+    }
+
+    if (!markRect || markRect.width === 0 || markRect.height === 0) return;
+
+    let bgColor;
+    if (hue >= 0) {
+      bgColor = `hsla(${hue},100%,60%,${opacity})`;
+    } else {
+      const base = (secretOptions.wordTrailColor && /^#[0-9a-fA-F]{6}$/.test(secretOptions.wordTrailColor))
+        ? secretOptions.wordTrailColor
+        : WORD_TRAIL_DEFAULT_COLOR;
+      bgColor = hexToRgba(base, opacity);
+    }
+
+    const overlay = document.createElement('div');
+    overlay.setAttribute('data-cb-trail', '1');
+    Object.assign(overlay.style, {
+      position: 'fixed',
+      left: markRect.left + 'px',
+      top: markRect.top + 'px',
+      width: markRect.width + 'px',
+      height: markRect.height + 'px',
+      background: bgColor,
+      borderRadius: '2px',
+      pointerEvents: 'none',
+      zIndex: '2147483646',
+    });
+    document.body.appendChild(overlay);
+  });
+}
+
+/**
+ * Detect the last completed word in a standard input/textarea and push it
+ * to the trail.  Must be called AFTER correctInputElement() so that any
+ * correction is already reflected in element.value / selectionStart.
+ */
+function trackWordTrailInput(element) {
+  if (!secretOptions.wordTrail) return;
+  let cursorPos;
+  try { cursorPos = element.selectionStart; } catch { return; }
+  if (cursorPos === null || cursorPos === undefined) return;
+
+  const value = element.value;
+  const charBefore = value[cursorPos - 1];
+  if (!charBefore || !SEPARATOR_RE.test(charBefore)) return;
+
+  const textBefore = value.substring(0, cursorPos - 1);
+  const wordMatch = textBefore.match(/(\S+)$/);
+  if (!wordMatch) return;
+
+  const rawToken = wordMatch[1];
+  const strippedLeading = rawToken.replace(LEADING_PUNCT_RE, '');
+  const word = strippedLeading.replace(TRAILING_PUNCT_RE, '');
+  if (!word) return;
+
+  const leadingLen = rawToken.length - strippedLeading.length;
+  const wordStart = cursorPos - 1 - rawToken.length + leadingLen;
+
+  if (secretOptions.wordTrailRgb) {
+    wordTrailRgbHue = (wordTrailRgbHue + 30) % 360;
+  }
+  const hue = secretOptions.wordTrailRgb ? wordTrailRgbHue : -1;
+  wordTrailEntries.unshift({ type: 'input', element, start: wordStart, length: word.length, hue });
+  if (wordTrailEntries.length > WORD_TRAIL_OPACITIES.length) {
+    wordTrailEntries.length = WORD_TRAIL_OPACITIES.length;
+  }
+  renderWordTrailOverlays();
+}
+
+/**
+ * Same as trackWordTrailInput but for contenteditable elements.
+ */
+function trackWordTrailCE(element) {
+  if (!secretOptions.wordTrail) return;
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return;
+  const range = selection.getRangeAt(0);
+  if (!range.collapsed) return;
+  const node = range.startContainer;
+  if (!node || node.nodeType !== Node.TEXT_NODE) return;
+  if (!element.contains(node)) return;
+
+  const cursorPos = range.startOffset;
+  const text = node.textContent;
+  const charBefore = text[cursorPos - 1];
+  if (!charBefore || !SEPARATOR_RE.test(charBefore)) return;
+
+  const textBefore = text.substring(0, cursorPos - 1);
+  const wordMatch = textBefore.match(/(\S+)$/);
+  if (!wordMatch) return;
+
+  const rawToken = wordMatch[1];
+  const strippedLeading = rawToken.replace(LEADING_PUNCT_RE, '');
+  const word = strippedLeading.replace(TRAILING_PUNCT_RE, '');
+  if (!word) return;
+
+  const leadingLen = rawToken.length - strippedLeading.length;
+  const wordStart = cursorPos - 1 - rawToken.length + leadingLen;
+
+  if (secretOptions.wordTrailRgb) {
+    wordTrailRgbHue = (wordTrailRgbHue + 30) % 360;
+  }
+  const hue = secretOptions.wordTrailRgb ? wordTrailRgbHue : -1;
+  wordTrailEntries.unshift({ type: 'ce', node, start: wordStart, length: word.length, hue });
+  if (wordTrailEntries.length > WORD_TRAIL_OPACITIES.length) {
+    wordTrailEntries.length = WORD_TRAIL_OPACITIES.length;
+  }
+  renderWordTrailOverlays();
+}
+
+
 
 /**
  * Look up a correction for the given word.
@@ -1020,6 +1222,16 @@ function handleInput(event) {
       correctInputElement(el);
     } else if (el.isContentEditable) {
       correctContentEditable(el);
+    }
+  }
+
+  // Word trail (tracks ALL typed words, runs after correction so word
+  // positions reflect any replacement already applied above)
+  if (secretOptions.wordTrail) {
+    if (isTextInput) {
+      trackWordTrailInput(el);
+    } else if (el.isContentEditable) {
+      trackWordTrailCE(el);
     }
   }
 

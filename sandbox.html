@@ -74,6 +74,28 @@
       </div>
       <p class="secret-subtitle" data-i18n="secret-panel-subtitle">You unlocked these features through your achievements!</p>
       <div class="secret-opts">
+        <div id="optWordTrailRow" hidden>
+          <label class="secret-opt">
+            <input type="checkbox" id="optWordTrail">
+            <div>
+              <strong data-i18n="secret-opt-wordtrail-name">🐍 Word Trail</strong>
+              <span data-i18n="secret-opt-wordtrail-desc">Highlights the 5 most recently typed words with decreasing opacity</span>
+            </div>
+          </label>
+          <div id="wordTrailColorRow" class="secret-keybind-row" hidden>
+            <span class="secret-keybind-label" data-i18n="secret-opt-wordtrail-color-label">Trail Colour</span>
+            <input type="color" id="wordTrailColorInput" class="secret-color-input" value="#4C90D6">
+          </div>
+          <div id="wordTrailRgbRow" hidden>
+            <label class="secret-opt secret-opt-sub">
+              <input type="checkbox" id="optWordTrailRgb">
+              <div>
+                <strong data-i18n="secret-opt-wordtrail-rgb-name">🌈 Rainbow Mode</strong>
+                <span data-i18n="secret-opt-wordtrail-rgb-desc">Automatically cycles the trail colour with every typed word</span>
+              </div>
+            </label>
+          </div>
+        </div>
         <div id="optCursorLocatorRow" hidden>
           <label class="secret-opt">
             <input type="checkbox" id="optCursorLocator">
