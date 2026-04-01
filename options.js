@@ -634,7 +634,7 @@ document.addEventListener('click', (e) => {
 
 // Languages handled by dictionaryapi.dev (subset used by this extension).
 // Keep in sync with the identical constant in background.js (separate execution context).
-const DICT_API_LANGS = new Set(['en', 'es', 'fr', 'de']);
+const DICT_API_LANGS = new Set(['en']);
 
 // Parse a dicionario-aberto.net response (array of { word, xml }) into the
 // dictionaryapi.dev-like shape used by renderLookupResult.

@@ -79,7 +79,10 @@ function loadSettings() {
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
-  if (changes.wordMap) wordMap = changes.wordMap.newValue || {};
+  if (changes.wordMap) {
+    wordMap = changes.wordMap.newValue || {};
+    recheckAllElements();
+  }
   if (changes.enabled !== undefined) enabled = changes.enabled.newValue !== false;
   if (changes.settings) {
     settings = changes.settings.newValue || { autoCapitalize: false, blacklistedDomains: [] };
@@ -1014,7 +1017,54 @@ function getCorrection(word) {
 }
 
 /**
- * Find and replace the last completed word in a standard input/textarea.
+ * Apply all wordMap corrections to a full string of text.
+ * Preserves surrounding punctuation and case, using the same tokenisation
+ * rules as correctInputElement / correctContentEditable.
+ */
+function applyWordMapToText(text) {
+  return text.replace(/\S+/g, (token) => {
+    const strippedLeading = token.replace(LEADING_PUNCT_RE, '');
+    const coreWord = strippedLeading.replace(TRAILING_PUNCT_RE, '');
+    if (!coreWord) return token;
+    const correction = getCorrection(coreWord);
+    if (!correction) return token;
+    const leading = token.slice(0, token.length - strippedLeading.length);
+    const trailing = strippedLeading.slice(coreWord.length);
+    return leading + correction + trailing;
+  });
+}
+
+/**
+ * Scan all editable elements on the page and apply the current wordMap to
+ * any text that hasn't been corrected yet.  Called after wordMap changes so
+ * that words the user just added don't remain wrong in existing fields.
+ */
+function recheckAllElements() {
+  if (!enabled || blockedByDomain || Object.keys(wordMap).length === 0) return;
+  applying = true;
+  try {
+    document.querySelectorAll(SELECTOR).forEach((el) => {
+      const tag = el.tagName;
+      if ((tag === 'INPUT' || tag === 'TEXTAREA') && el.type !== 'password') {
+        const newValue = applyWordMapToText(el.value);
+        if (newValue !== el.value) el.value = newValue;
+      } else if (el.isContentEditable) {
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        const pending = [];
+        let node;
+        while ((node = walker.nextNode())) {
+          const newText = applyWordMapToText(node.textContent);
+          if (newText !== node.textContent) pending.push({ node, newText });
+        }
+        for (const { node, newText } of pending) node.textContent = newText;
+      }
+    });
+  } finally {
+    applying = false;
+  }
+}
+
+/**
  * A word is "completed" when followed by a separator character.
  */
 function correctInputElement(element) {
