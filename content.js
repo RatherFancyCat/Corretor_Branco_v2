@@ -42,19 +42,19 @@ function matchesKeybind(event, keybindStr) {
   if (!keybindStr) return false;
   const parts = keybindStr.split('+');
   const mainKey = parts[parts.length - 1];
-  const needsAlt   = parts.includes('Alt');
-  const needsCtrl  = parts.includes('Ctrl');
+  const needsAlt = parts.includes('Alt');
+  const needsCtrl = parts.includes('Ctrl');
   const needsShift = parts.includes('Shift');
-  const needsMeta  = parts.includes('Meta');
+  const needsMeta = parts.includes('Meta');
   // Normalise single characters to upper-case for case-insensitive comparison
   const eventKey = event.key.length === 1 ? event.key.toUpperCase() : event.key;
-  const bindKey  = mainKey.length === 1  ? mainKey.toUpperCase()  : mainKey;
+  const bindKey = mainKey.length === 1 ? mainKey.toUpperCase() : mainKey;
   return (
     eventKey === bindKey &&
-    event.altKey   === needsAlt   &&
-    event.ctrlKey  === needsCtrl  &&
+    event.altKey === needsAlt &&
+    event.ctrlKey === needsCtrl &&
     event.shiftKey === needsShift &&
-    event.metaKey  === needsMeta
+    event.metaKey === needsMeta
   );
 }
 
@@ -79,7 +79,10 @@ function loadSettings() {
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
-  if (changes.wordMap) wordMap = changes.wordMap.newValue || {};
+  if (changes.wordMap) {
+    wordMap = changes.wordMap.newValue || {};
+    recheckAllElements();
+  }
   if (changes.enabled !== undefined) enabled = changes.enabled.newValue !== false;
   if (changes.settings) {
     settings = changes.settings.newValue || { autoCapitalize: false, blacklistedDomains: [] };
@@ -153,7 +156,7 @@ let __cbToastCount = 0;
 /** Render an achievement toast notification on the active web page. */
 function showAchievementToastOnPage(def) {
   const DISPLAY_MS = 7000;
-  const SLIDE_MS   = 400;
+  const SLIDE_MS = 400;
 
   const bottomOffset = 20 + __cbToastCount * 130;
   __cbToastCount++;
@@ -516,8 +519,8 @@ function recordCorrection() {
           secretChanged = true;
         } else if (
           (def.reward === 'xpbar' || def.reward === 'cursorlocator' ||
-           def.reward === 'wordtrail' || def.reward === 'wordtrailcolor' ||
-           def.reward === 'wordtrailrgb') && !opts.revealed
+            def.reward === 'wordtrail' || def.reward === 'wordtrailcolor' ||
+            def.reward === 'wordtrailrgb') && !opts.revealed
         ) {
           opts.revealed = true;
           secretChanged = true;
@@ -794,7 +797,7 @@ function showCursorLocator(el) {
 // Word Trail
 // ---------------------------------------------------------------------------
 
-const WORD_TRAIL_OPACITIES = [0.70, 0.50, 0.30, 0.20, 0.10];
+const WORD_TRAIL_OPACITIES = [0.30, 0.25, 0.20, 0.15, 0.10];
 const WORD_TRAIL_DEFAULT_COLOR = '#4C90D6';
 
 // Trail state – in-memory only, per-tab
@@ -1014,7 +1017,54 @@ function getCorrection(word) {
 }
 
 /**
- * Find and replace the last completed word in a standard input/textarea.
+ * Apply all wordMap corrections to a full string of text.
+ * Preserves surrounding punctuation and case, using the same tokenisation
+ * rules as correctInputElement / correctContentEditable.
+ */
+function applyWordMapToText(text) {
+  return text.replace(/\S+/g, (token) => {
+    const strippedLeading = token.replace(LEADING_PUNCT_RE, '');
+    const coreWord = strippedLeading.replace(TRAILING_PUNCT_RE, '');
+    if (!coreWord) return token;
+    const correction = getCorrection(coreWord);
+    if (!correction) return token;
+    const leading = token.slice(0, token.length - strippedLeading.length);
+    const trailing = strippedLeading.slice(coreWord.length);
+    return leading + correction + trailing;
+  });
+}
+
+/**
+ * Scan all editable elements on the page and apply the current wordMap to
+ * any text that hasn't been corrected yet.  Called after wordMap changes so
+ * that words the user just added don't remain wrong in existing fields.
+ */
+function recheckAllElements() {
+  if (!enabled || blockedByDomain || Object.keys(wordMap).length === 0) return;
+  applying = true;
+  try {
+    document.querySelectorAll(SELECTOR).forEach((el) => {
+      const tag = el.tagName;
+      if ((tag === 'INPUT' || tag === 'TEXTAREA') && el.type !== 'password') {
+        const newValue = applyWordMapToText(el.value);
+        if (newValue !== el.value) el.value = newValue;
+      } else if (el.isContentEditable) {
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        const pending = [];
+        let node;
+        while ((node = walker.nextNode())) {
+          const newText = applyWordMapToText(node.textContent);
+          if (newText !== node.textContent) pending.push({ node, newText });
+        }
+        for (const { node, newText } of pending) node.textContent = newText;
+      }
+    });
+  } finally {
+    applying = false;
+  }
+}
+
+/**
  * A word is "completed" when followed by a separator character.
  */
 function correctInputElement(element) {
@@ -1540,6 +1590,201 @@ function showAddWordDialog(selectedWord) {
   });
 }
 
+
+// ---------------------------------------------------------------------------
+// Definition lookup overlay (context menu → background → content script)
+// ---------------------------------------------------------------------------
+
+function showDefinitionLookup(word, lang) {
+  // Remove any pre-existing lookup overlay
+  const existingLookup = document.getElementById('__cb_lookup_host__');
+  if (existingLookup) existingLookup.remove();
+
+  const cleanWord = word.trim()
+    .replace(LEADING_PUNCT_RE, '')
+    .replace(TRAILING_PUNCT_RE, '');
+
+  // ---- Overlay host --------------------------------------------------------
+  const host = document.createElement('div');
+  host.id = '__cb_lookup_host__';
+  Object.assign(host.style, {
+    position: 'fixed',
+    inset: '0',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'rgba(0,0,0,0.45)',
+    zIndex: '2147483647',
+    fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
+  });
+
+  const shadow = host.attachShadow({ mode: 'open' });
+
+  const style = document.createElement('style');
+  style.textContent = `
+    *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+    .panel {
+      background: #fff;
+      border-radius: 12px;
+      padding: 0;
+      box-shadow: 0 6px 28px rgba(0,0,0,0.22);
+      width: 320px;
+      max-width: 90vw;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px 12px;
+      border-bottom: 1px solid #eee;
+      gap: 10px;
+    }
+    .panel-word {
+      font-size: 22px;
+      font-weight: 700;
+      color: #4A90D9;
+      word-break: break-word;
+    }
+    .close-btn {
+      background: #f0f0f0;
+      border: none;
+      border-radius: 50%;
+      width: 26px; height: 26px;
+      cursor: pointer;
+      font-size: 13px;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      color: #555;
+    }
+    .close-btn:hover { background: #ddd; }
+    .panel-body {
+      padding: 14px 18px 16px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .loading { color: #888; font-size: 13px; }
+    .phonetic { font-size: 13px; color: #888; margin-bottom: 10px; }
+    .pos {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; color: #aaa; margin-top: 10px; margin-bottom: 4px;
+    }
+    .def { font-size: 13px; color: #333; line-height: 1.5; margin-bottom: 4px; padding-left: 12px; }
+    .not-found { color: #888; font-size: 13px; }
+    .search-link {
+      display: inline-block;
+      margin-top: 12px;
+      font-size: 12px;
+      color: #4A90D9;
+      text-decoration: none;
+    }
+    .search-link:hover { text-decoration: underline; }
+    .divider { height: 1px; background: #eee; margin: 10px 0; }
+  `;
+
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.addEventListener('click', (e) => e.stopPropagation());
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'panel-header';
+  const wordEl = document.createElement('span');
+  wordEl.className = 'panel-word';
+  wordEl.textContent = cleanWord;
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'close-btn';
+  closeBtn.textContent = '✕';
+  header.appendChild(wordEl);
+  header.appendChild(closeBtn);
+
+  // Body
+  const body = document.createElement('div');
+  body.className = 'panel-body';
+
+  I18n._lang = currentLang;
+  body.innerHTML = `<p class="loading">${I18n.t('lookup-loading')}</p>`;
+
+  panel.appendChild(header);
+  panel.appendChild(body);
+  shadow.appendChild(style);
+  shadow.appendChild(panel);
+  document.documentElement.appendChild(host);
+
+  // ---- Close helpers -------------------------------------------------------
+  function handleKeyDown(e) {
+    if (e.key === 'Escape') closeLookup();
+  }
+  document.addEventListener('keydown', handleKeyDown);
+
+  function closeLookup() {
+    document.removeEventListener('keydown', handleKeyDown);
+    host.remove();
+  }
+
+  host.addEventListener('click', closeLookup);
+  closeBtn.addEventListener('click', closeLookup);
+
+  // ---- Fetch via background proxy ------------------------------------------
+  chrome.runtime.sendMessage(
+    { action: 'lookupWordApi', word: cleanWord, lang: lang || currentLang },
+    (response) => {
+      I18n._lang = currentLang;
+
+      // Build DOM nodes with textContent so no user-supplied text touches innerHTML.
+      function addText(className, text) {
+        const el = document.createElement('p');
+        el.className = className;
+        el.textContent = text;
+        body.appendChild(el);
+      }
+
+      const searchUrl = 'https://www.google.com/search?q=define+' + encodeURIComponent(cleanWord);
+      function addSearchLink() {
+        const hr = document.createElement('div');
+        hr.className = 'divider';
+        body.appendChild(hr);
+        const a = document.createElement('a');
+        a.href = searchUrl;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.className = 'search-link';
+        a.textContent = I18n.t('lookup-search-online') + ' ↗';
+        body.appendChild(a);
+      }
+
+      if (!response || !response.ok || !response.data || !response.data[0]) {
+        addText('not-found', I18n.t('lookup-not-found'));
+        addSearchLink();
+        return;
+      }
+      const entry = response.data[0];
+      const phonetic = (entry.phonetics || []).find((p) => p.text);
+      if (phonetic) addText('phonetic', phonetic.text);
+      const meanings = (entry.meanings || []).slice(0, 3);
+      for (const m of meanings) {
+        addText('pos', m.partOfSpeech);
+        for (const d of (m.definitions || []).slice(0, 2)) {
+          addText('def', '• ' + d.definition);
+        }
+      }
+      if (!meanings.length) addText('not-found', I18n.t('lookup-not-found'));
+      addSearchLink();
+    }
+  );
+}
+
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 // ---------------------------------------------------------------------------
 // Message listener (background.js → content script)
 // ---------------------------------------------------------------------------
@@ -1547,5 +1792,8 @@ function showAddWordDialog(selectedWord) {
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.action === 'showAddWordDialog') {
     showAddWordDialog(msg.word || '');
+  }
+  if (msg.action === 'showDefinitionLookup') {
+    showDefinitionLookup(msg.word || '', msg.lang || 'pt');
   }
 });

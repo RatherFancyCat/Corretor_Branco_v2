@@ -146,6 +146,31 @@ const TRANSLATIONS = {
     'ach-corrections-5000-desc': '5.000 palavras corrigidas — desbloqueia o Modo Arco-Íris do Rasto',
     'ach-corrections-10000-name': 'Dez Mil',
     'ach-corrections-10000-desc': '10.000 palavras corrigidas',
+
+    // Tags feature
+    'opts-tags-manage-btn': '🏷 Gerir Etiquetas',
+    'opts-tag-filter-all': 'Todas',
+    'opts-tag-filter-untagged': 'Sem etiqueta',
+    'opts-th-tag': 'Etiqueta',
+    'modal-tags-h2': '🏷 Gerir Etiquetas',
+    'opts-tag-new-name-ph': 'Nome da etiqueta',
+    'opts-tag-btn-add': 'Adicionar',
+    'opts-tag-btn-edit': 'Editar',
+    'opts-tag-btn-delete': 'Eliminar',
+    'opts-tag-btn-save': 'Guardar',
+    'opts-tag-btn-cancel': 'Cancelar',
+    'opts-tag-add': '+ Etiqueta',
+    'opts-tag-no-tag': 'Sem etiqueta',
+    'opts-tag-picker-empty': 'Sem etiquetas. Crie uma primeiro.',
+    'opts-tag-no-tags-msg': 'Nenhuma etiqueta criada ainda. Crie a sua primeira etiqueta acima!',
+    'confirm-delete-tag': 'Eliminar esta etiqueta? As palavras associadas ficarão sem etiqueta.',
+
+    // Definition lookup
+    'lookup-btn-title': 'Procurar definição',
+    'lookup-loading': 'A carregar…',
+    'lookup-not-found': 'Nenhuma definição encontrada.',
+    'lookup-error': 'Não foi possível obter a definição.',
+    'lookup-search-online': 'Pesquisar online',
   },
 
   // ---- English ----
@@ -289,6 +314,31 @@ const TRANSLATIONS = {
     'ach-corrections-5000-desc': 'Have 5,000 words corrected — unlocks Rainbow Trail mode',
     'ach-corrections-10000-name': 'Ten Thousand',
     'ach-corrections-10000-desc': 'Have 10,000 words corrected',
+
+    // Tags feature
+    'opts-tags-manage-btn': '🏷 Manage Tags',
+    'opts-tag-filter-all': 'All',
+    'opts-tag-filter-untagged': 'Untagged',
+    'opts-th-tag': 'Tag',
+    'modal-tags-h2': '🏷 Manage Tags',
+    'opts-tag-new-name-ph': 'Tag name',
+    'opts-tag-btn-add': 'Add',
+    'opts-tag-btn-edit': 'Edit',
+    'opts-tag-btn-delete': 'Delete',
+    'opts-tag-btn-save': 'Save',
+    'opts-tag-btn-cancel': 'Cancel',
+    'opts-tag-add': '+ Tag',
+    'opts-tag-no-tag': 'No tag',
+    'opts-tag-picker-empty': 'No tags yet. Create one first.',
+    'opts-tag-no-tags-msg': 'No tags created yet. Create your first tag above!',
+    'confirm-delete-tag': 'Delete this tag? Words with this tag will become untagged.',
+
+    // Definition lookup
+    'lookup-btn-title': 'Look up definition',
+    'lookup-loading': 'Loading…',
+    'lookup-not-found': 'No definition found.',
+    'lookup-error': 'Could not retrieve definition.',
+    'lookup-search-online': 'Search online',
   },
   es: {
     'extension-name': 'Corrector Blanco',
@@ -430,6 +480,31 @@ const TRANSLATIONS = {
     'ach-corrections-5000-desc': '5.000 palabras corregidas — desbloquea el Modo Arcoíris del Rastro',
     'ach-corrections-10000-name': 'Diez Mil',
     'ach-corrections-10000-desc': '10.000 palabras corregidas',
+
+    // Tags feature
+    'opts-tags-manage-btn': '🏷 Gestionar Etiquetas',
+    'opts-tag-filter-all': 'Todas',
+    'opts-tag-filter-untagged': 'Sin etiqueta',
+    'opts-th-tag': 'Etiqueta',
+    'modal-tags-h2': '🏷 Gestionar Etiquetas',
+    'opts-tag-new-name-ph': 'Nombre de la etiqueta',
+    'opts-tag-btn-add': 'Añadir',
+    'opts-tag-btn-edit': 'Editar',
+    'opts-tag-btn-delete': 'Eliminar',
+    'opts-tag-btn-save': 'Guardar',
+    'opts-tag-btn-cancel': 'Cancelar',
+    'opts-tag-add': '+ Etiqueta',
+    'opts-tag-no-tag': 'Sin etiqueta',
+    'opts-tag-picker-empty': 'Sin etiquetas. Cree una primero.',
+    'opts-tag-no-tags-msg': '¡Aún no hay etiquetas. Cree su primera etiqueta arriba!',
+    'confirm-delete-tag': '¿Eliminar esta etiqueta? Las palabras con esta etiqueta quedarán sin etiquetar.',
+
+    // Definition lookup
+    'lookup-btn-title': 'Buscar definición',
+    'lookup-loading': 'Cargando…',
+    'lookup-not-found': 'No se encontró ninguna definición.',
+    'lookup-error': 'No se pudo obtener la definición.',
+    'lookup-search-online': 'Buscar en línea',
   },
 
   // ---- French ----
@@ -573,6 +648,31 @@ const TRANSLATIONS = {
     'ach-corrections-5000-desc': '5\u202F000 mots corrigés — débloque le Mode Arc-en-ciel',
     'ach-corrections-10000-name': 'Dix mille',
     'ach-corrections-10000-desc': '10\u202F000 mots corrigés',
+
+    // Tags feature
+    'opts-tags-manage-btn': '🏷 Gérer les étiquettes',
+    'opts-tag-filter-all': 'Toutes',
+    'opts-tag-filter-untagged': 'Sans étiquette',
+    'opts-th-tag': 'Étiquette',
+    'modal-tags-h2': '🏷 Gérer les étiquettes',
+    'opts-tag-new-name-ph': "Nom de l'étiquette",
+    'opts-tag-btn-add': 'Ajouter',
+    'opts-tag-btn-edit': 'Modifier',
+    'opts-tag-btn-delete': 'Supprimer',
+    'opts-tag-btn-save': 'Enregistrer',
+    'opts-tag-btn-cancel': 'Annuler',
+    'opts-tag-add': '+ Étiquette',
+    'opts-tag-no-tag': 'Sans étiquette',
+    'opts-tag-picker-empty': 'Aucune étiquette. Créez-en une en premier.',
+    'opts-tag-no-tags-msg': 'Aucune étiquette créée. Créez votre première étiquette ci-dessus\u00A0!',
+    'confirm-delete-tag': 'Supprimer cette étiquette\u00A0? Les mots avec cette étiquette seront sans étiquette.',
+
+    // Definition lookup
+    'lookup-btn-title': 'Rechercher la définition',
+    'lookup-loading': 'Chargement\u00A0\u2026',
+    'lookup-not-found': 'Aucune définition trouvée.',
+    'lookup-error': 'Impossible de récupérer la définition.',
+    'lookup-search-online': 'Rechercher en ligne',
   },
   de: {
     'extension-name': 'Weißer Korrektor',
@@ -714,6 +814,31 @@ const TRANSLATIONS = {
     'ach-corrections-5000-desc': '5.000 Wörter korrigiert — schaltet Regenbogen-Modus frei',
     'ach-corrections-10000-name': 'Zehntausend',
     'ach-corrections-10000-desc': '10.000 Wörter korrigiert',
+
+    // Tags feature
+    'opts-tags-manage-btn': '🏷 Tags verwalten',
+    'opts-tag-filter-all': 'Alle',
+    'opts-tag-filter-untagged': 'Ohne Tag',
+    'opts-th-tag': 'Tag',
+    'modal-tags-h2': '🏷 Tags verwalten',
+    'opts-tag-new-name-ph': 'Tag-Name',
+    'opts-tag-btn-add': 'Hinzufügen',
+    'opts-tag-btn-edit': 'Bearbeiten',
+    'opts-tag-btn-delete': 'Löschen',
+    'opts-tag-btn-save': 'Speichern',
+    'opts-tag-btn-cancel': 'Abbrechen',
+    'opts-tag-add': '+ Tag',
+    'opts-tag-no-tag': 'Kein Tag',
+    'opts-tag-picker-empty': 'Keine Tags. Erstellen Sie zuerst einen.',
+    'opts-tag-no-tags-msg': 'Noch keine Tags erstellt. Erstellen Sie oben Ihren ersten Tag!',
+    'confirm-delete-tag': 'Diesen Tag löschen? Wörter mit diesem Tag werden nicht mehr getaggt.',
+
+    // Definition lookup
+    'lookup-btn-title': 'Definition nachschlagen',
+    'lookup-loading': 'Wird geladen\u2026',
+    'lookup-not-found': 'Keine Definition gefunden.',
+    'lookup-error': 'Definition konnte nicht abgerufen werden.',
+    'lookup-search-online': 'Online suchen',
   },
 
   // ---- Chinese (Simplified) ----
@@ -857,6 +982,31 @@ const TRANSLATIONS = {
     'ach-corrections-5000-desc': '更正5,000个单词 — 解锁彩虹模式',
     'ach-corrections-10000-name': '一万次',
     'ach-corrections-10000-desc': '更正10,000个单词',
+
+    // Tags feature
+    'opts-tags-manage-btn': '🏷 管理标签',
+    'opts-tag-filter-all': '全部',
+    'opts-tag-filter-untagged': '无标签',
+    'opts-th-tag': '标签',
+    'modal-tags-h2': '🏷 管理标签',
+    'opts-tag-new-name-ph': '标签名称',
+    'opts-tag-btn-add': '添加',
+    'opts-tag-btn-edit': '编辑',
+    'opts-tag-btn-delete': '删除',
+    'opts-tag-btn-save': '保存',
+    'opts-tag-btn-cancel': '取消',
+    'opts-tag-add': '+ 标签',
+    'opts-tag-no-tag': '无标签',
+    'opts-tag-picker-empty': '暂无标签，请先创建一个。',
+    'opts-tag-no-tags-msg': '尚未创建标签。请在上方创建您的第一个标签！',
+    'confirm-delete-tag': '删除此标签？带有此标签的词汇将变为无标签。',
+
+    // Definition lookup
+    'lookup-btn-title': '查找释义',
+    'lookup-loading': '加载中…',
+    'lookup-not-found': '未找到释义。',
+    'lookup-error': '无法获取释义。',
+    'lookup-search-online': '在线搜索',
   },
 };
 

@@ -129,6 +129,10 @@
         <div class="table-controls">
           <input type="text" id="searchInput" class="search-input" data-i18n-placeholder="opts-search-ph"
             placeholder="&#128269; Pesquisar palavras…">
+          <select id="tagFilterSelect" class="tag-filter-select">
+            <option value="all" data-i18n="opts-tag-filter-all">Todas</option>
+          </select>
+          <button id="manageTagsBtn" class="btn btn-secondary btn-sm" data-i18n="opts-tags-manage-btn">🏷 Gerir Etiquetas</button>
           <button id="clearAllBtn" class="btn btn-danger" data-i18n="opts-btn-clear-all">&#128465; Limpar Tudo</button>
         </div>
       </div>
@@ -138,6 +142,7 @@
             <tr>
               <th data-i18n="opts-th-incorrect">Palavra com Erro</th>
               <th data-i18n="opts-th-correct">Correção</th>
+              <th class="col-tag" data-i18n="opts-th-tag">Etiqueta</th>
               <th class="col-action" data-i18n="opts-th-action">Ação</th>
             </tr>
           </thead>
@@ -173,6 +178,39 @@
           Reset Achievements</button>
       </div>
     </div>
+  </div>
+
+  <!-- Tags Management Modal -->
+  <div id="tagsModal" class="modal-backdrop" hidden>
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2 data-i18n="modal-tags-h2">🏷 Gerir Etiquetas</h2>
+        <button id="closeTagsModalBtn" class="modal-close">✕</button>
+      </div>
+      <div class="tags-modal-body">
+        <form id="addTagForm" class="tag-new-form" autocomplete="off">
+          <input type="text" id="newTagName" class="tag-name-input" maxlength="30"
+            data-i18n-placeholder="opts-tag-new-name-ph" placeholder="Nome da etiqueta">
+          <input type="color" id="newTagColor" value="#4A90D9">
+          <button type="submit" class="btn btn-primary btn-sm" data-i18n="opts-tag-btn-add">Adicionar</button>
+        </form>
+        <div id="tagsList" class="tags-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tag Picker Popup -->
+  <div id="tagPickerPopup" class="tag-picker-popup" hidden>
+    <div id="tagPickerList"></div>
+  </div>
+
+  <!-- Definition Lookup Popup -->
+  <div id="lookupPopup" class="lookup-popup" hidden>
+    <div class="lookup-popup-header">
+      <span id="lookupPopupWord" class="lookup-popup-word"></span>
+      <button id="closeLookupPopupBtn" class="lookup-close-btn">✕</button>
+    </div>
+    <div id="lookupPopupBody" class="lookup-popup-body"></div>
   </div>
 
   <script src="i18n.js"></script>
