@@ -1695,14 +1695,14 @@ function showDefinitionLookup(word, lang) {
       let html = '';
       const phonetic = (entry.phonetics || []).find((p) => p.text);
       if (phonetic) {
-        html += '<p class="phonetic">' + escapeHtmlContent(phonetic.text) + '</p>';
+        html += '<p class="phonetic">' + escapeHtml(phonetic.text) + '</p>';
       }
       const meanings = (entry.meanings || []).slice(0, 3);
       for (const m of meanings) {
-        html += '<p class="pos">' + escapeHtmlContent(m.partOfSpeech) + '</p>';
+        html += '<p class="pos">' + escapeHtml(m.partOfSpeech) + '</p>';
         const defs = (m.definitions || []).slice(0, 2);
         for (const d of defs) {
-          html += '<p class="def">• ' + escapeHtmlContent(d.definition) + '</p>';
+          html += '<p class="def">• ' + escapeHtml(d.definition) + '</p>';
         }
       }
       if (!meanings.length) {
@@ -1717,7 +1717,7 @@ function showDefinitionLookup(word, lang) {
   );
 }
 
-function escapeHtmlContent(text) {
+function escapeHtml(text) {
   return String(text)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

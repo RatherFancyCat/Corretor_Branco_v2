@@ -633,7 +633,10 @@ document.addEventListener('click', (e) => {
 // ---------------------------------------------------------------------------
 
 // Map interface language → dictionaryapi.dev lang codes (only supported ones)
-const DICT_API_LANGS_OPT = new Set(['en', 'hi', 'es', 'fr', 'de', 'it', 'ko', 'ar', 'tr', 'ru', 'ja']);
+// Note: background.js keeps an identical set for its API-proxy handler; both
+// are intentionally separate because they run in independent execution contexts
+// (extension page vs. service worker).
+const DICT_API_LANGS = new Set(['en', 'hi', 'es', 'fr', 'de', 'it', 'ko', 'ar', 'tr', 'ru', 'ja']);
 
 function openLookupPopup(word, btn) {
   const popup = document.getElementById('lookupPopup');
@@ -656,7 +659,7 @@ function openLookupPopup(word, btn) {
   popup.hidden = false;
 
   // Fetch
-  const lang = DICT_API_LANGS_OPT.has(I18n._lang) ? I18n._lang : 'en';
+  const lang = DICT_API_LANGS.has(I18n._lang) ? I18n._lang : 'en';
   const url = `https://api.dictionaryapi.dev/api/v2/entries/${lang}/${encodeURIComponent(word)}`;
 
   fetch(url)
