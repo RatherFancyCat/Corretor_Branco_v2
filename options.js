@@ -368,10 +368,10 @@ document.getElementById('skipCapEnabledChk').addEventListener('change', (e) => {
  */
 function formatKeybind(event) {
   const parts = [];
-  if (event.ctrlKey)  parts.push('Ctrl');
-  if (event.altKey)   parts.push('Alt');
+  if (event.ctrlKey) parts.push('Ctrl');
+  if (event.altKey) parts.push('Alt');
   if (event.shiftKey) parts.push('Shift');
-  if (event.metaKey)  parts.push('Meta');
+  if (event.metaKey) parts.push('Meta');
   const key = event.key;
   if (['Control', 'Alt', 'Shift', 'Meta'].includes(key)) return null;
   parts.push(key.length === 1 ? key.toUpperCase() : key);
@@ -512,13 +512,13 @@ function renderAchievements() {
 
     html +=
       `<div class="ach-item ${unlockedAt ? 'ach-unlocked' : 'ach-locked'}">` +
-        `<div class="ach-icon">${unlockedAt ? '🏆' : '🔒'}</div>` +
-        `<div class="ach-info">` +
-          `<strong class="ach-name">${escapeHtml(I18n.t('ach-' + def.id + '-name'))}</strong>` +
-          `<span class="ach-desc">${escapeHtml(I18n.t('ach-' + def.id + '-desc'))}</span>` +
-          `<span class="ach-reward">${I18n.t('ach-reward-label')} ${rewardText}</span>` +
-          (dateStr ? `<span class="ach-date">${I18n.t('ach-unlocked-on')} ${escapeHtml(dateStr)}</span>` : '') +
-        `</div>` +
+      `<div class="ach-icon">${unlockedAt ? '🏆' : '🔒'}</div>` +
+      `<div class="ach-info">` +
+      `<strong class="ach-name">${escapeHtml(I18n.t('ach-' + def.id + '-name'))}</strong>` +
+      `<span class="ach-desc">${escapeHtml(I18n.t('ach-' + def.id + '-desc'))}</span>` +
+      `<span class="ach-reward">${I18n.t('ach-reward-label')} ${rewardText}</span>` +
+      (dateStr ? `<span class="ach-date">${I18n.t('ach-unlocked-on')} ${escapeHtml(dateStr)}</span>` : '') +
+      `</div>` +
       `</div>`;
   }
 
@@ -661,7 +661,7 @@ function normalizeDicionarioAberto(apiData) {
 
   // Part of speech: <pos>…</pos> or <gram type="pos">…</gram>
   const posMatch = xmlStr.match(/<pos[^>]*>([\s\S]*?)<\/pos>/) ||
-                   xmlStr.match(/<gram[^>]*type="pos"[^>]*>([\s\S]*?)<\/gram>/);
+    xmlStr.match(/<gram[^>]*type="pos"[^>]*>([\s\S]*?)<\/gram>/);
   const pos = posMatch ? xmlToText(posMatch[1]) : '';
 
   // Definitions: all <def>…</def> blocks
@@ -698,7 +698,7 @@ function openLookupPopup(word, btn) {
 
   // Fetch: route by language
   const lang = I18n._lang || 'pt';
-  const searchUrl = 'https://www.google.com/search?q=define+' + encodeURIComponent(word);
+  const searchUrl = 'https://www.google.com/search?q=' + encodeURIComponent(word);
   const showFallback = () => {
     bodyEl.innerHTML =
       `<p class="lookup-not-found">${I18n.t('lookup-not-found')}</p>` +
@@ -771,7 +771,7 @@ function renderLookupResult(data, word) {
   divider.className = 'lookup-divider';
   bodyEl.appendChild(divider);
 
-  const searchUrl = 'https://www.google.com/search?q=define+' + encodeURIComponent(word);
+  const searchUrl = 'https://www.google.com/search?q=' + encodeURIComponent(word);
   const link = document.createElement('a');
   link.href = searchUrl;
   link.target = '_blank';

@@ -44,18 +44,18 @@ function matchesKeybind(event, keybindStr) {
   if (!keybindStr) return false;
   const parts = keybindStr.split('+');
   const mainKey = parts[parts.length - 1];
-  const needsAlt   = parts.includes('Alt');
-  const needsCtrl  = parts.includes('Ctrl');
+  const needsAlt = parts.includes('Alt');
+  const needsCtrl = parts.includes('Ctrl');
   const needsShift = parts.includes('Shift');
-  const needsMeta  = parts.includes('Meta');
+  const needsMeta = parts.includes('Meta');
   const eventKey = event.key.length === 1 ? event.key.toUpperCase() : event.key;
-  const bindKey  = mainKey.length === 1  ? mainKey.toUpperCase()  : mainKey;
+  const bindKey = mainKey.length === 1 ? mainKey.toUpperCase() : mainKey;
   return (
     eventKey === bindKey &&
-    event.altKey   === needsAlt   &&
-    event.ctrlKey  === needsCtrl  &&
+    event.altKey === needsAlt &&
+    event.ctrlKey === needsCtrl &&
     event.shiftKey === needsShift &&
-    event.metaKey  === needsMeta
+    event.metaKey === needsMeta
   );
 }
 
@@ -65,10 +65,10 @@ function matchesKeybind(event, keybindStr) {
  */
 function formatKeybind(event) {
   const parts = [];
-  if (event.ctrlKey)  parts.push('Ctrl');
-  if (event.altKey)   parts.push('Alt');
+  if (event.ctrlKey) parts.push('Ctrl');
+  if (event.altKey) parts.push('Alt');
   if (event.shiftKey) parts.push('Shift');
-  if (event.metaKey)  parts.push('Meta');
+  if (event.metaKey) parts.push('Meta');
   const key = event.key;
   if (['Control', 'Alt', 'Shift', 'Meta'].includes(key)) return null;
   parts.push(key.length === 1 ? key.toUpperCase() : key);
@@ -516,7 +516,7 @@ function showCursorLocatorSandbox() {
 // Word Trail
 // ---------------------------------------------------------------------------
 
-const WORD_TRAIL_OPACITIES = [0.70, 0.50, 0.30, 0.20, 0.10];
+const WORD_TRAIL_OPACITIES = [0.30, 0.25, 0.20, 0.15, 0.10];
 const WORD_TRAIL_DEFAULT_COLOR = '#4C90D6';
 
 // Trail state – kept in memory, not persisted
@@ -759,7 +759,7 @@ function checkAndSaveAchievements() {
 
 function showAchievementToast(def) {
   const DISPLAY_MS = 7000;
-  const SLIDE_MS   = 400;
+  const SLIDE_MS = 400;
 
   // Stack toasts upward: each new toast sits above existing ones
   const existing = document.querySelectorAll('.ach-toast');
@@ -782,8 +782,8 @@ function showAchievementToast(def) {
   topRow.innerHTML =
     `<span class="ach-toast-icon">🏆</span>` +
     `<div class="ach-toast-body" style="flex:1">` +
-      `<strong>${I18n.t('ach-toast-title')}</strong>` +
-      `<span title="${escapeHtml(I18n.t('ach-' + def.id + '-name'))}">${escapeHtml(I18n.t('ach-' + def.id + '-name'))}</span>` +
+    `<strong>${I18n.t('ach-toast-title')}</strong>` +
+    `<span title="${escapeHtml(I18n.t('ach-' + def.id + '-name'))}">${escapeHtml(I18n.t('ach-' + def.id + '-name'))}</span>` +
     `</div>`;
 
   const dismissBtn = document.createElement('button');

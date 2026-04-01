@@ -42,19 +42,19 @@ function matchesKeybind(event, keybindStr) {
   if (!keybindStr) return false;
   const parts = keybindStr.split('+');
   const mainKey = parts[parts.length - 1];
-  const needsAlt   = parts.includes('Alt');
-  const needsCtrl  = parts.includes('Ctrl');
+  const needsAlt = parts.includes('Alt');
+  const needsCtrl = parts.includes('Ctrl');
   const needsShift = parts.includes('Shift');
-  const needsMeta  = parts.includes('Meta');
+  const needsMeta = parts.includes('Meta');
   // Normalise single characters to upper-case for case-insensitive comparison
   const eventKey = event.key.length === 1 ? event.key.toUpperCase() : event.key;
-  const bindKey  = mainKey.length === 1  ? mainKey.toUpperCase()  : mainKey;
+  const bindKey = mainKey.length === 1 ? mainKey.toUpperCase() : mainKey;
   return (
     eventKey === bindKey &&
-    event.altKey   === needsAlt   &&
-    event.ctrlKey  === needsCtrl  &&
+    event.altKey === needsAlt &&
+    event.ctrlKey === needsCtrl &&
     event.shiftKey === needsShift &&
-    event.metaKey  === needsMeta
+    event.metaKey === needsMeta
   );
 }
 
@@ -153,7 +153,7 @@ let __cbToastCount = 0;
 /** Render an achievement toast notification on the active web page. */
 function showAchievementToastOnPage(def) {
   const DISPLAY_MS = 7000;
-  const SLIDE_MS   = 400;
+  const SLIDE_MS = 400;
 
   const bottomOffset = 20 + __cbToastCount * 130;
   __cbToastCount++;
@@ -516,8 +516,8 @@ function recordCorrection() {
           secretChanged = true;
         } else if (
           (def.reward === 'xpbar' || def.reward === 'cursorlocator' ||
-           def.reward === 'wordtrail' || def.reward === 'wordtrailcolor' ||
-           def.reward === 'wordtrailrgb') && !opts.revealed
+            def.reward === 'wordtrail' || def.reward === 'wordtrailcolor' ||
+            def.reward === 'wordtrailrgb') && !opts.revealed
         ) {
           opts.revealed = true;
           secretChanged = true;
@@ -794,7 +794,7 @@ function showCursorLocator(el) {
 // Word Trail
 // ---------------------------------------------------------------------------
 
-const WORD_TRAIL_OPACITIES = [0.70, 0.50, 0.30, 0.20, 0.10];
+const WORD_TRAIL_OPACITIES = [0.30, 0.25, 0.20, 0.15, 0.10];
 const WORD_TRAIL_DEFAULT_COLOR = '#4C90D6';
 
 // Trail state – in-memory only, per-tab
