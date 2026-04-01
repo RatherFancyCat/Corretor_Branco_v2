@@ -1540,6 +1540,191 @@ function showAddWordDialog(selectedWord) {
   });
 }
 
+
+// ---------------------------------------------------------------------------
+// Definition lookup overlay (context menu → background → content script)
+// ---------------------------------------------------------------------------
+
+function showDefinitionLookup(word, lang) {
+  // Remove any pre-existing lookup overlay
+  const existingLookup = document.getElementById('__cb_lookup_host__');
+  if (existingLookup) existingLookup.remove();
+
+  const cleanWord = word.trim()
+    .replace(LEADING_PUNCT_RE, '')
+    .replace(TRAILING_PUNCT_RE, '');
+
+  // ---- Overlay host --------------------------------------------------------
+  const host = document.createElement('div');
+  host.id = '__cb_lookup_host__';
+  Object.assign(host.style, {
+    position: 'fixed',
+    inset: '0',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'rgba(0,0,0,0.45)',
+    zIndex: '2147483647',
+    fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
+  });
+
+  const shadow = host.attachShadow({ mode: 'open' });
+
+  const style = document.createElement('style');
+  style.textContent = `
+    *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+    .panel {
+      background: #fff;
+      border-radius: 12px;
+      padding: 0;
+      box-shadow: 0 6px 28px rgba(0,0,0,0.22);
+      width: 320px;
+      max-width: 90vw;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px 12px;
+      border-bottom: 1px solid #eee;
+      gap: 10px;
+    }
+    .panel-word {
+      font-size: 22px;
+      font-weight: 700;
+      color: #4A90D9;
+      word-break: break-word;
+    }
+    .close-btn {
+      background: #f0f0f0;
+      border: none;
+      border-radius: 50%;
+      width: 26px; height: 26px;
+      cursor: pointer;
+      font-size: 13px;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      color: #555;
+    }
+    .close-btn:hover { background: #ddd; }
+    .panel-body {
+      padding: 14px 18px 16px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .loading { color: #888; font-size: 13px; }
+    .phonetic { font-size: 13px; color: #888; margin-bottom: 10px; }
+    .pos {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; color: #aaa; margin-top: 10px; margin-bottom: 4px;
+    }
+    .def { font-size: 13px; color: #333; line-height: 1.5; margin-bottom: 4px; padding-left: 12px; }
+    .not-found { color: #888; font-size: 13px; }
+    .search-link {
+      display: inline-block;
+      margin-top: 12px;
+      font-size: 12px;
+      color: #4A90D9;
+      text-decoration: none;
+    }
+    .search-link:hover { text-decoration: underline; }
+    .divider { height: 1px; background: #eee; margin: 10px 0; }
+  `;
+
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.addEventListener('click', (e) => e.stopPropagation());
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'panel-header';
+  const wordEl = document.createElement('span');
+  wordEl.className = 'panel-word';
+  wordEl.textContent = cleanWord;
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'close-btn';
+  closeBtn.textContent = '✕';
+  header.appendChild(wordEl);
+  header.appendChild(closeBtn);
+
+  // Body
+  const body = document.createElement('div');
+  body.className = 'panel-body';
+
+  I18n._lang = currentLang;
+  body.innerHTML = `<p class="loading">${I18n.t('lookup-loading')}</p>`;
+
+  panel.appendChild(header);
+  panel.appendChild(body);
+  shadow.appendChild(style);
+  shadow.appendChild(panel);
+  document.documentElement.appendChild(host);
+
+  // ---- Close helpers -------------------------------------------------------
+  function handleKeyDown(e) {
+    if (e.key === 'Escape') closeLookup();
+  }
+  document.addEventListener('keydown', handleKeyDown);
+
+  function closeLookup() {
+    document.removeEventListener('keydown', handleKeyDown);
+    host.remove();
+  }
+
+  host.addEventListener('click', closeLookup);
+  closeBtn.addEventListener('click', closeLookup);
+
+  // ---- Fetch via background proxy ------------------------------------------
+  chrome.runtime.sendMessage(
+    { action: 'lookupWordApi', word: cleanWord, lang: lang || currentLang },
+    (response) => {
+      I18n._lang = currentLang;
+      if (!response || !response.ok || !response.data || !response.data[0]) {
+        const searchUrl = 'https://www.google.com/search?q=define+' + encodeURIComponent(cleanWord);
+        body.innerHTML =
+          '<p class="not-found">' + I18n.t('lookup-not-found') + '</p>' +
+          '<a class="search-link" href="' + searchUrl + '" target="_blank">' +
+          I18n.t('lookup-search-online') + ' ↗</a>';
+        return;
+      }
+      const entry = response.data[0];
+      let html = '';
+      const phonetic = (entry.phonetics || []).find((p) => p.text);
+      if (phonetic) {
+        html += '<p class="phonetic">' + escapeHtmlContent(phonetic.text) + '</p>';
+      }
+      const meanings = (entry.meanings || []).slice(0, 3);
+      for (const m of meanings) {
+        html += '<p class="pos">' + escapeHtmlContent(m.partOfSpeech) + '</p>';
+        const defs = (m.definitions || []).slice(0, 2);
+        for (const d of defs) {
+          html += '<p class="def">• ' + escapeHtmlContent(d.definition) + '</p>';
+        }
+      }
+      if (!meanings.length) {
+        html += '<p class="not-found">' + I18n.t('lookup-not-found') + '</p>';
+      }
+      html += '<div class="divider"></div>';
+      const searchUrl = 'https://www.google.com/search?q=define+' + encodeURIComponent(cleanWord);
+      html += '<a class="search-link" href="' + searchUrl + '" target="_blank">' +
+              I18n.t('lookup-search-online') + ' ↗</a>';
+      body.innerHTML = html;
+    }
+  );
+}
+
+function escapeHtmlContent(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 // ---------------------------------------------------------------------------
 // Message listener (background.js → content script)
 // ---------------------------------------------------------------------------
@@ -1547,5 +1732,8 @@ function showAddWordDialog(selectedWord) {
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.action === 'showAddWordDialog') {
     showAddWordDialog(msg.word || '');
+  }
+  if (msg.action === 'showDefinitionLookup') {
+    showDefinitionLookup(msg.word || '', msg.lang || 'pt');
   }
 });

@@ -8,13 +8,32 @@ const MENU_LABELS = {
   zh: '添加为错误词汇',
 };
 
+
+const LOOKUP_LABELS = {
+  pt: 'Procurar definição',
+  en: 'Look up definition',
+  es: 'Buscar definición',
+  fr: 'Rechercher la définition',
+  de: 'Definition nachschlagen',
+  zh: '查找释义',
+};
+
+// Language codes supported by dictionaryapi.dev
+const DICT_API_LANGS = new Set(['en', 'hi', 'es', 'fr', 'de', 'it', 'ko', 'ar', 'tr', 'ru', 'ja']);
+
 function buildContextMenu(lang) {
-  const title = MENU_LABELS[lang] || MENU_LABELS.pt;
+  const addTitle    = MENU_LABELS[lang]   || MENU_LABELS.pt;
+  const lookupTitle = LOOKUP_LABELS[lang] || LOOKUP_LABELS.en;
   // removeAll first so re-registration never creates duplicates
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: 'cb-add-misspelled',
-      title,
+      title: addTitle,
+      contexts: ['selection'],
+    });
+    chrome.contextMenus.create({
+      id: 'cb-lookup-word',
+      title: lookupTitle,
       contexts: ['selection'],
     });
   });
@@ -51,19 +70,41 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-// Relay context menu click to the content script in the active tab
+// Relay context menu clicks to the content script in the active tab
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId !== 'cb-add-misspelled') return;
   if (!info.selectionText || !tab || !tab.id) return;
-  chrome.tabs.sendMessage(tab.id, {
-    action: 'showAddWordDialog',
-    word: info.selectionText,
-  });
+  if (info.menuItemId === 'cb-add-misspelled') {
+    chrome.tabs.sendMessage(tab.id, {
+      action: 'showAddWordDialog',
+      word: info.selectionText,
+    });
+  } else if (info.menuItemId === 'cb-lookup-word') {
+    chrome.storage.local.get('language', (data) => {
+      chrome.tabs.sendMessage(tab.id, {
+        action: 'showDefinitionLookup',
+        word: info.selectionText,
+        lang: data.language || 'pt',
+      });
+    });
+  }
 });
 
 // Handle messages from content scripts
-chrome.runtime.onMessage.addListener((msg, _sender, _sendResponse) => {
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.action === 'openSandbox') {
     chrome.tabs.create({ url: chrome.runtime.getURL('sandbox.html') });
+    return false;
+  }
+  if (msg.action === 'lookupWordApi') {
+    const word = msg.word || '';
+    const lang = DICT_API_LANGS.has(msg.lang) ? msg.lang : 'en';
+    const url = `https://api.dictionaryapi.dev/api/v2/entries/${lang}/${encodeURIComponent(word)}`;
+    fetch(url)
+      .then((res) => {
+        if (!res.ok) return sendResponse({ ok: false, status: res.status });
+        return res.json().then((data) => sendResponse({ ok: true, data }));
+      })
+      .catch(() => sendResponse({ ok: false, status: 0 }));
+    return true; // keep message channel open for async response
   }
 });

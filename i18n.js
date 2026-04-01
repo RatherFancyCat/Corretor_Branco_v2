@@ -164,6 +164,13 @@ const TRANSLATIONS = {
     'opts-tag-picker-empty': 'Sem etiquetas. Crie uma primeiro.',
     'opts-tag-no-tags-msg': 'Nenhuma etiqueta criada ainda. Crie a sua primeira etiqueta acima!',
     'confirm-delete-tag': 'Eliminar esta etiqueta? As palavras associadas ficarão sem etiqueta.',
+
+    // Definition lookup
+    'lookup-btn-title': 'Procurar definição',
+    'lookup-loading': 'A carregar…',
+    'lookup-not-found': 'Nenhuma definição encontrada.',
+    'lookup-error': 'Não foi possível obter a definição.',
+    'lookup-search-online': 'Pesquisar online',
   },
 
   // ---- English ----
@@ -325,6 +332,13 @@ const TRANSLATIONS = {
     'opts-tag-picker-empty': 'No tags yet. Create one first.',
     'opts-tag-no-tags-msg': 'No tags created yet. Create your first tag above!',
     'confirm-delete-tag': 'Delete this tag? Words with this tag will become untagged.',
+
+    // Definition lookup
+    'lookup-btn-title': 'Look up definition',
+    'lookup-loading': 'Loading…',
+    'lookup-not-found': 'No definition found.',
+    'lookup-error': 'Could not retrieve definition.',
+    'lookup-search-online': 'Search online',
   },
   es: {
     'extension-name': 'Corrector Blanco',
@@ -484,6 +498,13 @@ const TRANSLATIONS = {
     'opts-tag-picker-empty': 'Sin etiquetas. Cree una primero.',
     'opts-tag-no-tags-msg': '¡Aún no hay etiquetas. Cree su primera etiqueta arriba!',
     'confirm-delete-tag': '¿Eliminar esta etiqueta? Las palabras con esta etiqueta quedarán sin etiquetar.',
+
+    // Definition lookup
+    'lookup-btn-title': 'Buscar definición',
+    'lookup-loading': 'Cargando…',
+    'lookup-not-found': 'No se encontró ninguna definición.',
+    'lookup-error': 'No se pudo obtener la definición.',
+    'lookup-search-online': 'Buscar en línea',
   },
 
   // ---- French ----
@@ -645,6 +666,13 @@ const TRANSLATIONS = {
     'opts-tag-picker-empty': 'Aucune étiquette. Créez-en une en premier.',
     'opts-tag-no-tags-msg': 'Aucune étiquette créée. Créez votre première étiquette ci-dessus\u00A0!',
     'confirm-delete-tag': 'Supprimer cette étiquette\u00A0? Les mots avec cette étiquette seront sans étiquette.',
+
+    // Definition lookup
+    'lookup-btn-title': 'Rechercher la définition',
+    'lookup-loading': 'Chargement\u00A0\u2026',
+    'lookup-not-found': 'Aucune définition trouvée.',
+    'lookup-error': 'Impossible de récupérer la définition.',
+    'lookup-search-online': 'Rechercher en ligne',
   },
   de: {
     'extension-name': 'Weißer Korrektor',
@@ -804,6 +832,13 @@ const TRANSLATIONS = {
     'opts-tag-picker-empty': 'Keine Tags. Erstellen Sie zuerst einen.',
     'opts-tag-no-tags-msg': 'Noch keine Tags erstellt. Erstellen Sie oben Ihren ersten Tag!',
     'confirm-delete-tag': 'Diesen Tag löschen? Wörter mit diesem Tag werden nicht mehr getaggt.',
+
+    // Definition lookup
+    'lookup-btn-title': 'Definition nachschlagen',
+    'lookup-loading': 'Wird geladen\u2026',
+    'lookup-not-found': 'Keine Definition gefunden.',
+    'lookup-error': 'Definition konnte nicht abgerufen werden.',
+    'lookup-search-online': 'Online suchen',
   },
 
   // ---- Chinese (Simplified) ----
@@ -965,6 +1000,13 @@ const TRANSLATIONS = {
     'opts-tag-picker-empty': '暂无标签，请先创建一个。',
     'opts-tag-no-tags-msg': '尚未创建标签。请在上方创建您的第一个标签！',
     'confirm-delete-tag': '删除此标签？带有此标签的词汇将变为无标签。',
+
+    // Definition lookup
+    'lookup-btn-title': '查找释义',
+    'lookup-loading': '加载中…',
+    'lookup-not-found': '未找到释义。',
+    'lookup-error': '无法获取释义。',
+    'lookup-search-online': '在线搜索',
   },
 };
 

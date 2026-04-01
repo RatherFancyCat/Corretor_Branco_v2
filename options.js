@@ -151,7 +151,11 @@ function renderWordList(filter) {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="word-incorrect">${escapeHtml(incorrect)}</td>
-      <td class="word-correct">${escapeHtml(correct)}</td>
+      <td class="word-correct">
+        <span>${escapeHtml(correct)}</span>
+        <button class="lookup-btn" data-word="${escapeHtml(correct)}"
+                title="${escapeHtml(I18n.t('lookup-btn-title'))}">?</button>
+      </td>
       <td class="col-tag">${tagCellHtml}</td>
       <td class="col-action">
         <button class="btn btn-sm btn-danger delete-btn"
@@ -282,6 +286,11 @@ document.getElementById('wordTableBody').addEventListener('click', (e) => {
   if (e.target.classList.contains('assign-tag-btn')) {
     e.stopPropagation();
     openTagPicker(e.target);
+    return;
+  }
+  if (e.target.classList.contains('lookup-btn')) {
+    e.stopPropagation();
+    openLookupPopup(e.target.dataset.word, e.target);
     return;
   }
   if (!e.target.classList.contains('delete-btn')) return;
@@ -613,7 +622,96 @@ document.addEventListener('click', (e) => {
   if (!popup.hidden && !e.target.closest('#tagPickerPopup') && !e.target.closest('.assign-tag-btn')) {
     closeTagPicker();
   }
+  const lp = document.getElementById('lookupPopup');
+  if (lp && !lp.hidden && !e.target.closest('#lookupPopup') && !e.target.closest('.lookup-btn')) {
+    closeLookupPopup();
+  }
 });
+
+// ---------------------------------------------------------------------------
+// Definition Lookup Popup (options page)
+// ---------------------------------------------------------------------------
+
+// Map interface language → dictionaryapi.dev lang codes (only supported ones)
+const DICT_API_LANGS_OPT = new Set(['en', 'hi', 'es', 'fr', 'de', 'it', 'ko', 'ar', 'tr', 'ru', 'ja']);
+
+function openLookupPopup(word, btn) {
+  const popup = document.getElementById('lookupPopup');
+  const wordEl = document.getElementById('lookupPopupWord');
+  const bodyEl = document.getElementById('lookupPopupBody');
+
+  wordEl.textContent = word;
+  bodyEl.innerHTML = `<p class="lookup-loading">${I18n.t('lookup-loading')}</p>`;
+
+  // Position: prefer to the right of the button, flip left if near edge
+  const popupWidth = 290;
+  const rect = btn.getBoundingClientRect();
+  let left = rect.right + 8;
+  let top = rect.top + window.scrollY;
+  if (left + popupWidth > window.innerWidth - 8) {
+    left = Math.max(4, rect.left - popupWidth - 8);
+  }
+  popup.style.top = top + 'px';
+  popup.style.left = left + 'px';
+  popup.hidden = false;
+
+  // Fetch
+  const lang = DICT_API_LANGS_OPT.has(I18n._lang) ? I18n._lang : 'en';
+  const url = `https://api.dictionaryapi.dev/api/v2/entries/${lang}/${encodeURIComponent(word)}`;
+
+  fetch(url)
+    .then((res) => {
+      if (!res.ok) throw new Error('not-found');
+      return res.json();
+    })
+    .then((data) => renderLookupResult(data, word))
+    .catch(() => {
+      const searchUrl = 'https://www.google.com/search?q=define+' + encodeURIComponent(word);
+      bodyEl.innerHTML =
+        `<p class="lookup-not-found">${I18n.t('lookup-not-found')}</p>` +
+        `<a href="${searchUrl}" target="_blank" class="lookup-search-link">${I18n.t('lookup-search-online')} ↗</a>`;
+    });
+}
+
+function renderLookupResult(data, word) {
+  const bodyEl = document.getElementById('lookupPopupBody');
+  if (!data || !data[0]) {
+    bodyEl.innerHTML = `<p class="lookup-not-found">${I18n.t('lookup-not-found')}</p>`;
+    return;
+  }
+  const entry = data[0];
+  let html = '';
+
+  const phonetic = (entry.phonetics || []).find((p) => p.text);
+  if (phonetic) {
+    html += `<p class="lookup-phonetic">${escapeHtml(phonetic.text)}</p>`;
+  }
+
+  const meanings = (entry.meanings || []).slice(0, 3);
+  for (const m of meanings) {
+    html += `<p class="lookup-pos">${escapeHtml(m.partOfSpeech)}</p>`;
+    for (const d of (m.definitions || []).slice(0, 2)) {
+      html += `<p class="lookup-def">\u2022 ${escapeHtml(d.definition)}</p>`;
+    }
+  }
+
+  if (!meanings.length) {
+    html += `<p class="lookup-not-found">${I18n.t('lookup-not-found')}</p>`;
+  }
+
+  const searchUrl = 'https://www.google.com/search?q=define+' + encodeURIComponent(word);
+  html += `<div class="lookup-divider"></div>
+    <a href="${searchUrl}" target="_blank" class="lookup-search-link">${I18n.t('lookup-search-online')} ↗</a>`;
+
+  bodyEl.innerHTML = html;
+}
+
+function closeLookupPopup() {
+  const popup = document.getElementById('lookupPopup');
+  if (popup) popup.hidden = true;
+}
+
+document.getElementById('closeLookupPopupBtn').addEventListener('click', closeLookupPopup);
 
 // ---------------------------------------------------------------------------
 // Tags Management Modal
@@ -761,6 +859,7 @@ document.addEventListener('keydown', (e) => {
     closeAchievementsModal();
     closeTagsModal();
     closeTagPicker();
+    closeLookupPopup();
   }
 });
 
