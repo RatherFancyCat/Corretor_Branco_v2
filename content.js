@@ -1683,36 +1683,46 @@ function showDefinitionLookup(word, lang) {
     { action: 'lookupWordApi', word: cleanWord, lang: lang || currentLang },
     (response) => {
       I18n._lang = currentLang;
+
+      // Build DOM nodes with textContent so no user-supplied text touches innerHTML.
+      function addText(className, text) {
+        const el = document.createElement('p');
+        el.className = className;
+        el.textContent = text;
+        body.appendChild(el);
+      }
+
+      const searchUrl = 'https://www.google.com/search?q=define+' + encodeURIComponent(cleanWord);
+      function addSearchLink() {
+        const hr = document.createElement('div');
+        hr.className = 'divider';
+        body.appendChild(hr);
+        const a = document.createElement('a');
+        a.href = searchUrl;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.className = 'search-link';
+        a.textContent = I18n.t('lookup-search-online') + ' ↗';
+        body.appendChild(a);
+      }
+
       if (!response || !response.ok || !response.data || !response.data[0]) {
-        const searchUrl = 'https://www.google.com/search?q=define+' + encodeURIComponent(cleanWord);
-        body.innerHTML =
-          '<p class="not-found">' + I18n.t('lookup-not-found') + '</p>' +
-          '<a class="search-link" href="' + searchUrl + '" target="_blank">' +
-          I18n.t('lookup-search-online') + ' ↗</a>';
+        addText('not-found', I18n.t('lookup-not-found'));
+        addSearchLink();
         return;
       }
       const entry = response.data[0];
-      let html = '';
       const phonetic = (entry.phonetics || []).find((p) => p.text);
-      if (phonetic) {
-        html += '<p class="phonetic">' + escapeHtml(phonetic.text) + '</p>';
-      }
+      if (phonetic) addText('phonetic', phonetic.text);
       const meanings = (entry.meanings || []).slice(0, 3);
       for (const m of meanings) {
-        html += '<p class="pos">' + escapeHtml(m.partOfSpeech) + '</p>';
-        const defs = (m.definitions || []).slice(0, 2);
-        for (const d of defs) {
-          html += '<p class="def">• ' + escapeHtml(d.definition) + '</p>';
+        addText('pos', m.partOfSpeech);
+        for (const d of (m.definitions || []).slice(0, 2)) {
+          addText('def', '• ' + d.definition);
         }
       }
-      if (!meanings.length) {
-        html += '<p class="not-found">' + I18n.t('lookup-not-found') + '</p>';
-      }
-      html += '<div class="divider"></div>';
-      const searchUrl = 'https://www.google.com/search?q=define+' + encodeURIComponent(cleanWord);
-      html += '<a class="search-link" href="' + searchUrl + '" target="_blank">' +
-              I18n.t('lookup-search-online') + ' ↗</a>';
-      body.innerHTML = html;
+      if (!meanings.length) addText('not-found', I18n.t('lookup-not-found'));
+      addSearchLink();
     }
   );
 }

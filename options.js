@@ -632,11 +632,49 @@ document.addEventListener('click', (e) => {
 // Definition Lookup Popup (options page)
 // ---------------------------------------------------------------------------
 
-// Map interface language → dictionaryapi.dev lang codes (only supported ones)
-// Note: background.js keeps an identical set for its API-proxy handler; both
-// are intentionally separate because they run in independent execution contexts
-// (extension page vs. service worker).
-const DICT_API_LANGS = new Set(['en', 'hi', 'es', 'fr', 'de', 'it', 'ko', 'ar', 'tr', 'ru', 'ja']);
+// Languages handled by dictionaryapi.dev (subset used by this extension).
+// Keep in sync with the identical constant in background.js (separate execution context).
+const DICT_API_LANGS = new Set(['en', 'es', 'fr', 'de']);
+
+// Parse a dicionario-aberto.net response (array of { word, xml }) into the
+// dictionaryapi.dev-like shape used by renderLookupResult.
+// An identical copy of this function lives in background.js (separate execution context).
+function normalizeDicionarioAberto(apiData) {
+  if (!Array.isArray(apiData) || !apiData[0]) return null;
+  const xmlStr = apiData[0].xml || '';
+
+  // Strip all XML tags then remove any stray angle brackets that remain
+  // (e.g. from malformed/incomplete tags). Decode entities with &amp; last
+  // to avoid double-decoding sequences like &amp;lt;.
+  // NOTE: The decoded text is only ever assigned to DOM textContent (never
+  // innerHTML), so any resulting '<' characters are display-safe.
+  function xmlToText(s) {
+    return s
+      .replace(/<[^>]*>/g, '')    // strip complete tags
+      .replace(/</g, '')          // remove any stray <
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+      .replace(/&amp;/g, '&')     // amp last: prevents double-decoding
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  // Part of speech: <pos>…</pos> or <gram type="pos">…</gram>
+  const posMatch = xmlStr.match(/<pos[^>]*>([\s\S]*?)<\/pos>/) ||
+                   xmlStr.match(/<gram[^>]*type="pos"[^>]*>([\s\S]*?)<\/gram>/);
+  const pos = posMatch ? xmlToText(posMatch[1]) : '';
+
+  // Definitions: all <def>…</def> blocks
+  const defs = [];
+  for (const m of xmlStr.matchAll(/<def[^>]*>([\s\S]*?)<\/def>/g)) {
+    const text = xmlToText(m[1]);
+    if (text) defs.push({ definition: text });
+    if (defs.length === 4) break;
+  }
+
+  if (!defs.length) return null;
+  return [{ phonetics: [], meanings: [{ partOfSpeech: pos, definitions: defs }] }];
+}
 
 function openLookupPopup(word, btn) {
   const popup = document.getElementById('lookupPopup');
@@ -658,55 +696,89 @@ function openLookupPopup(word, btn) {
   popup.style.left = left + 'px';
   popup.hidden = false;
 
-  // Fetch
-  const lang = DICT_API_LANGS.has(I18n._lang) ? I18n._lang : 'en';
-  const url = `https://api.dictionaryapi.dev/api/v2/entries/${lang}/${encodeURIComponent(word)}`;
+  // Fetch: route by language
+  const lang = I18n._lang || 'pt';
+  const searchUrl = 'https://www.google.com/search?q=define+' + encodeURIComponent(word);
+  const showFallback = () => {
+    bodyEl.innerHTML =
+      `<p class="lookup-not-found">${I18n.t('lookup-not-found')}</p>` +
+      `<a href="${searchUrl}" target="_blank" class="lookup-search-link">${I18n.t('lookup-search-online')} ↗</a>`;
+  };
 
-  fetch(url)
-    .then((res) => {
-      if (!res.ok) throw new Error('not-found');
-      return res.json();
-    })
-    .then((data) => renderLookupResult(data, word))
-    .catch(() => {
-      const searchUrl = 'https://www.google.com/search?q=define+' + encodeURIComponent(word);
-      bodyEl.innerHTML =
-        `<p class="lookup-not-found">${I18n.t('lookup-not-found')}</p>` +
-        `<a href="${searchUrl}" target="_blank" class="lookup-search-link">${I18n.t('lookup-search-online')} ↗</a>`;
-    });
+  let fetchPromise;
+  if (lang === 'pt') {
+    // Portuguese: dicionario-aberto.net
+    const url = `https://api.dicionario-aberto.net/word/${encodeURIComponent(word)}`;
+    fetchPromise = fetch(url)
+      .then((res) => {
+        if (!res.ok) throw new Error('not-found');
+        return res.json();
+      })
+      .then((data) => {
+        const normalized = normalizeDicionarioAberto(data);
+        if (!normalized) throw new Error('not-found');
+        renderLookupResult(normalized, word);
+      });
+  } else if (DICT_API_LANGS.has(lang)) {
+    // English, Spanish, French, German: dictionaryapi.dev
+    const url = `https://api.dictionaryapi.dev/api/v2/entries/${lang}/${encodeURIComponent(word)}`;
+    fetchPromise = fetch(url)
+      .then((res) => {
+        if (!res.ok) throw new Error('not-found');
+        return res.json();
+      })
+      .then((data) => renderLookupResult(data, word));
+  } else {
+    // Chinese and other unsupported languages: skip API
+    showFallback();
+    return;
+  }
+
+  fetchPromise.catch(showFallback);
 }
 
 function renderLookupResult(data, word) {
   const bodyEl = document.getElementById('lookupPopupBody');
+  bodyEl.innerHTML = '';
+
+  function addText(className, text) {
+    const el = document.createElement('p');
+    el.className = className;
+    el.textContent = text;
+    bodyEl.appendChild(el);
+  }
+
   if (!data || !data[0]) {
-    bodyEl.innerHTML = `<p class="lookup-not-found">${I18n.t('lookup-not-found')}</p>`;
+    addText('lookup-not-found', I18n.t('lookup-not-found'));
     return;
   }
   const entry = data[0];
-  let html = '';
 
   const phonetic = (entry.phonetics || []).find((p) => p.text);
-  if (phonetic) {
-    html += `<p class="lookup-phonetic">${escapeHtml(phonetic.text)}</p>`;
-  }
+  if (phonetic) addText('lookup-phonetic', phonetic.text);
 
   const meanings = (entry.meanings || []).slice(0, 3);
   for (const m of meanings) {
-    html += `<p class="lookup-pos">${escapeHtml(m.partOfSpeech)}</p>`;
+    addText('lookup-pos', m.partOfSpeech);
     for (const d of (m.definitions || []).slice(0, 2)) {
-      html += `<p class="lookup-def">\u2022 ${escapeHtml(d.definition)}</p>`;
+      addText('lookup-def', '\u2022 ' + d.definition);
     }
   }
 
-  if (!meanings.length) {
-    html += `<p class="lookup-not-found">${I18n.t('lookup-not-found')}</p>`;
-  }
+  if (!meanings.length) addText('lookup-not-found', I18n.t('lookup-not-found'));
+
+  const divider = document.createElement('div');
+  divider.className = 'lookup-divider';
+  bodyEl.appendChild(divider);
 
   const searchUrl = 'https://www.google.com/search?q=define+' + encodeURIComponent(word);
-  html += `<div class="lookup-divider"></div>
-    <a href="${searchUrl}" target="_blank" class="lookup-search-link">${I18n.t('lookup-search-online')} ↗</a>`;
-
-  bodyEl.innerHTML = html;
+  const link = document.createElement('a');
+  link.href = searchUrl;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.className = 'lookup-search-link';
+  link.textContent = I18n.t('lookup-search-online') + ' \u2197';
+  bodyEl.appendChild(link);
 }
 
 function closeLookupPopup() {

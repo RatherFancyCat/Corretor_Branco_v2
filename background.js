@@ -18,8 +18,49 @@ const LOOKUP_LABELS = {
   zh: '查找释义',
 };
 
-// Language codes supported by dictionaryapi.dev
-const DICT_API_LANGS = new Set(['en', 'hi', 'es', 'fr', 'de', 'it', 'ko', 'ar', 'tr', 'ru', 'ja']);
+// Languages handled by dictionaryapi.dev (subset used by this extension).
+// Keep in sync with the identical constant in options.js (separate execution context).
+const DICT_API_LANGS = new Set(['en', 'es', 'fr', 'de']);
+
+// Parse a dicionario-aberto.net response (array of { word, xml }) into the
+// dictionaryapi.dev-like shape used by all rendering code: [{ phonetics, meanings }]
+// An identical copy of this function lives in options.js (separate execution context).
+function normalizeDicionarioAberto(apiData) {
+  if (!Array.isArray(apiData) || !apiData[0]) return null;
+  const xmlStr = apiData[0].xml || '';
+
+  // Strip all XML tags then remove any stray angle brackets that remain
+  // (e.g. from malformed/incomplete tags). Decode entities with &amp; last
+  // to avoid double-decoding sequences like &amp;lt;.
+  // NOTE: The decoded text is only ever assigned to DOM textContent (never
+  // innerHTML), so any resulting '<' characters are display-safe.
+  function xmlToText(s) {
+    return s
+      .replace(/<[^>]*>/g, '')    // strip complete tags
+      .replace(/</g, '')          // remove any stray <
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+      .replace(/&amp;/g, '&')     // amp last: prevents double-decoding
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  // Part of speech: <pos>…</pos> or <gram type="pos">…</gram>
+  const posMatch = xmlStr.match(/<pos[^>]*>([\s\S]*?)<\/pos>/) ||
+                   xmlStr.match(/<gram[^>]*type="pos"[^>]*>([\s\S]*?)<\/gram>/);
+  const pos = posMatch ? xmlToText(posMatch[1]) : '';
+
+  // Definitions: all <def>…</def> blocks
+  const defs = [];
+  for (const m of xmlStr.matchAll(/<def[^>]*>([\s\S]*?)<\/def>/g)) {
+    const text = xmlToText(m[1]);
+    if (text) defs.push({ definition: text });
+    if (defs.length === 4) break;
+  }
+
+  if (!defs.length) return null;
+  return [{ phonetics: [], meanings: [{ partOfSpeech: pos, definitions: defs }] }];
+}
 
 function buildContextMenu(lang) {
   const addTitle    = MENU_LABELS[lang]   || MENU_LABELS.pt;
@@ -97,7 +138,30 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   if (msg.action === 'lookupWordApi') {
     const word = msg.word || '';
-    const lang = DICT_API_LANGS.has(msg.lang) ? msg.lang : 'en';
+    const lang = msg.lang || 'pt';
+
+    // Portuguese: dicionario-aberto.net returns { word, xml }[]
+    if (lang === 'pt') {
+      const url = `https://api.dicionario-aberto.net/word/${encodeURIComponent(word)}`;
+      fetch(url)
+        .then((res) => {
+          if (!res.ok) return sendResponse({ ok: false, status: res.status });
+          return res.json().then((data) => {
+            const normalized = normalizeDicionarioAberto(data);
+            sendResponse(normalized ? { ok: true, data: normalized } : { ok: false, status: 404 });
+          });
+        })
+        .catch(() => sendResponse({ ok: false, status: 0 }));
+      return true;
+    }
+
+    // Chinese and other languages without a supported API: skip, show fallback
+    if (!DICT_API_LANGS.has(lang)) {
+      sendResponse({ ok: false, status: 0 });
+      return false;
+    }
+
+    // English, Spanish, French, German: dictionaryapi.dev
     const url = `https://api.dictionaryapi.dev/api/v2/entries/${lang}/${encodeURIComponent(word)}`;
     fetch(url)
       .then((res) => {
