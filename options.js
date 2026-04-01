@@ -70,7 +70,10 @@ function getTag(tagId) {
 }
 
 function generateTagId() {
-  return 'tag_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return 'tag_' + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+  }
+  return 'tag_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9);
 }
 
 function getContrastColor(hex) {
@@ -576,8 +579,14 @@ function openTagPicker(btn) {
   list.innerHTML = html;
 
   const rect = btn.getBoundingClientRect();
-  popup.style.top = (rect.bottom + window.scrollY + 4) + 'px';
-  popup.style.left = rect.left + 'px';
+  const popupWidth = 220;
+  let left = rect.left;
+  let top = rect.bottom + window.scrollY + 4;
+  if (left + popupWidth > window.innerWidth) {
+    left = Math.max(0, window.innerWidth - popupWidth - 8);
+  }
+  popup.style.top = top + 'px';
+  popup.style.left = left + 'px';
   popup.hidden = false;
 }
 
@@ -666,9 +675,9 @@ document.getElementById('tagsList').addEventListener('click', (e) => {
     const id = e.target.dataset.id;
     if (!confirm(I18n.t('confirm-delete-tag'))) return;
     tagDefinitions = tagDefinitions.filter((t) => t.id !== id);
-    for (const word of Object.keys(wordTags)) {
-      if (wordTags[word] === id) delete wordTags[word];
-    }
+    wordTags = Object.fromEntries(
+      Object.entries(wordTags).filter(([, tid]) => tid !== id)
+    );
     if (activeTagFilter === id) {
       activeTagFilter = 'all';
     }
