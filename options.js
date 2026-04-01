@@ -4,17 +4,22 @@ let wordMap = {};
 let settings = { autoCapitalize: false, blacklistedDomains: [] };
 let cbStats = { wordsAdded: 0, correctionsApplied: 0 };
 let cbAchievements = {};
+let tagDefinitions = [];
+let wordTags = {};
+let activeTagFilter = 'all';
 
 // ---------------------------------------------------------------------------
 // Storage helpers
 // ---------------------------------------------------------------------------
 
 function loadAll(callback) {
-  chrome.storage.local.get(['wordMap', 'settings', 'language', 'cbStats', 'cbAchievements', 'theme'], (data) => {
+  chrome.storage.local.get(['wordMap', 'settings', 'language', 'cbStats', 'cbAchievements', 'theme', 'tagDefinitions', 'wordTags'], (data) => {
     wordMap = data.wordMap || {};
     settings = data.settings || { autoCapitalize: false, blacklistedDomains: [] };
     cbStats = data.cbStats || { wordsAdded: 0, correctionsApplied: 0 };
     cbAchievements = data.cbAchievements || {};
+    tagDefinitions = data.tagDefinitions || [];
+    wordTags = data.wordTags || {};
     const lang = data.language || 'pt';
     I18n._lang = lang;
     applyTheme(data.theme || 'light');
@@ -28,6 +33,14 @@ function saveWordMap(callback) {
 
 function saveSettings(callback) {
   chrome.storage.local.set({ settings }, callback);
+}
+
+function saveTagDefinitions(callback) {
+  chrome.storage.local.set({ tagDefinitions }, callback);
+}
+
+function saveWordTags(callback) {
+  chrome.storage.local.set({ wordTags }, callback);
 }
 
 function applyTheme(theme) {
@@ -48,6 +61,42 @@ function escapeHtml(text) {
     .replace(/"/g, '&quot;');
 }
 
+// ---------------------------------------------------------------------------
+// Tag utilities
+// ---------------------------------------------------------------------------
+
+function getTag(tagId) {
+  return tagDefinitions.find((t) => t.id === tagId) || null;
+}
+
+function generateTagId() {
+  return 'tag_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+}
+
+function getContrastColor(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55 ? '#333' : '#fff';
+}
+
+function renderTagFilter() {
+  const sel = document.getElementById('tagFilterSelect');
+  const current = activeTagFilter;
+  sel.innerHTML =
+    `<option value="all">${I18n.t('opts-tag-filter-all')}</option>` +
+    `<option value="untagged">${I18n.t('opts-tag-filter-untagged')}</option>` +
+    tagDefinitions.map((t) =>
+      `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`
+    ).join('');
+  if ([...sel.options].some((o) => o.value === current)) {
+    sel.value = current;
+  } else {
+    activeTagFilter = 'all';
+    sel.value = 'all';
+  }
+}
+
 function renderWordList(filter) {
   const tbody = document.getElementById('wordTableBody');
   const emptyMsg = document.getElementById('emptyMessage');
@@ -58,15 +107,21 @@ function renderWordList(filter) {
 
   wordCountEl.textContent = entries.length;
 
-  const visible = q
+  let visible = q
     ? entries.filter(([k, v]) => k.toLowerCase().includes(q) || v.toLowerCase().includes(q))
     : entries;
+
+  if (activeTagFilter === 'untagged') {
+    visible = visible.filter(([k]) => !wordTags[k]);
+  } else if (activeTagFilter !== 'all') {
+    visible = visible.filter(([k]) => wordTags[k] === activeTagFilter);
+  }
 
   tbody.innerHTML = '';
 
   if (visible.length === 0) {
     emptyMsg.hidden = false;
-    emptyMsg.textContent = q
+    emptyMsg.textContent = (q || activeTagFilter !== 'all')
       ? I18n.t('err-no-words-found')
       : I18n.t('opts-empty-msg');
     return;
@@ -77,10 +132,24 @@ function renderWordList(filter) {
   visible.sort((a, b) => a[0].localeCompare(b[0]));
 
   for (const [incorrect, correct] of visible) {
+    const tagId = wordTags[incorrect] || null;
+    const tag = tagId ? getTag(tagId) : null;
+    let tagCellHtml;
+    if (tag) {
+      const contrast = getContrastColor(tag.color);
+      tagCellHtml = `<button class="tag-badge assign-tag-btn"
+        data-word="${escapeHtml(incorrect)}"
+        style="background:${escapeHtml(tag.color)};color:${contrast}"
+        >${escapeHtml(tag.name)}</button>`;
+    } else {
+      tagCellHtml = `<button class="tag-badge tag-badge--none assign-tag-btn"
+        data-word="${escapeHtml(incorrect)}">${I18n.t('opts-tag-add')}</button>`;
+    }
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="word-incorrect">${escapeHtml(incorrect)}</td>
       <td class="word-correct">${escapeHtml(correct)}</td>
+      <td class="col-tag">${tagCellHtml}</td>
       <td class="col-action">
         <button class="btn btn-sm btn-danger delete-btn"
                 data-word="${escapeHtml(incorrect)}">${I18n.t('btn-delete')}</button>
@@ -203,15 +272,23 @@ document.getElementById('addWordForm').addEventListener('submit', (e) => {
 });
 
 // ---------------------------------------------------------------------------
-// Event: Delete (delegated)
+// Event: Delete / Tag-assign (delegated)
 // ---------------------------------------------------------------------------
 
 document.getElementById('wordTableBody').addEventListener('click', (e) => {
+  if (e.target.classList.contains('assign-tag-btn')) {
+    e.stopPropagation();
+    openTagPicker(e.target);
+    return;
+  }
   if (!e.target.classList.contains('delete-btn')) return;
   const word = e.target.dataset.word;
   if (Object.prototype.hasOwnProperty.call(wordMap, word)) {
     delete wordMap[word];
-    saveWordMap(() => renderWordList(document.getElementById('searchInput').value));
+    delete wordTags[word];
+    saveWordMap(() => {
+      saveWordTags(() => renderWordList(document.getElementById('searchInput').value));
+    });
   }
 });
 
@@ -221,6 +298,15 @@ document.getElementById('wordTableBody').addEventListener('click', (e) => {
 
 document.getElementById('searchInput').addEventListener('input', (e) => {
   renderWordList(e.target.value);
+});
+
+// ---------------------------------------------------------------------------
+// Event: Tag filter
+// ---------------------------------------------------------------------------
+
+document.getElementById('tagFilterSelect').addEventListener('change', (e) => {
+  activeTagFilter = e.target.value;
+  renderWordList(document.getElementById('searchInput').value);
 });
 
 // ---------------------------------------------------------------------------
@@ -320,6 +406,7 @@ document.getElementById('languageSelect').addEventListener('change', (e) => {
   const lang = e.target.value;
   chrome.storage.local.set({ language: lang }, () => {
     I18n.apply(lang);
+    renderTagFilter();
     renderWordList(document.getElementById('searchInput').value);
   });
 });
@@ -457,6 +544,187 @@ document.getElementById('resetAchievementsBtn').addEventListener('click', resetA
 document.getElementById('achievementsModal').addEventListener('click', (e) => {
   if (e.target === e.currentTarget) closeAchievementsModal();
 });
+
+// ---------------------------------------------------------------------------
+// Tag Picker Popup
+// ---------------------------------------------------------------------------
+
+let tagPickerWord = null;
+
+function openTagPicker(btn) {
+  const popup = document.getElementById('tagPickerPopup');
+  const list = document.getElementById('tagPickerList');
+  tagPickerWord = btn.dataset.word;
+
+  let html = `<div class="tag-picker-item" data-tag-id="">
+    <span class="tag-picker-swatch tag-picker-none-swatch">−</span>
+    <span>${I18n.t('opts-tag-no-tag')}</span>
+  </div>`;
+
+  for (const tag of tagDefinitions) {
+    const active = wordTags[tagPickerWord] === tag.id;
+    html += `<div class="tag-picker-item${active ? ' active' : ''}" data-tag-id="${escapeHtml(tag.id)}">
+      <span class="tag-picker-swatch" style="background:${escapeHtml(tag.color)}"></span>
+      <span>${escapeHtml(tag.name)}</span>
+    </div>`;
+  }
+
+  if (tagDefinitions.length === 0) {
+    html += `<p class="tag-picker-hint">${I18n.t('opts-tag-picker-empty')}</p>`;
+  }
+
+  list.innerHTML = html;
+
+  const rect = btn.getBoundingClientRect();
+  popup.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+  popup.style.left = rect.left + 'px';
+  popup.hidden = false;
+}
+
+function closeTagPicker() {
+  document.getElementById('tagPickerPopup').hidden = true;
+  tagPickerWord = null;
+}
+
+document.getElementById('tagPickerPopup').addEventListener('click', (e) => {
+  const item = e.target.closest('.tag-picker-item');
+  if (!item || !tagPickerWord) return;
+  const tagId = item.dataset.tagId;
+  if (tagId) {
+    wordTags[tagPickerWord] = tagId;
+  } else {
+    delete wordTags[tagPickerWord];
+  }
+  saveWordTags(() => renderWordList(document.getElementById('searchInput').value));
+  closeTagPicker();
+});
+
+document.addEventListener('click', (e) => {
+  const popup = document.getElementById('tagPickerPopup');
+  if (!popup.hidden && !e.target.closest('#tagPickerPopup') && !e.target.closest('.assign-tag-btn')) {
+    closeTagPicker();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Tags Management Modal
+// ---------------------------------------------------------------------------
+
+function openTagsModal() {
+  renderTagsModal();
+  document.getElementById('tagsModal').hidden = false;
+}
+
+function closeTagsModal() {
+  document.getElementById('tagsModal').hidden = true;
+}
+
+function renderTagsModal() {
+  const list = document.getElementById('tagsList');
+  if (tagDefinitions.length === 0) {
+    list.innerHTML = `<p class="tags-empty-msg">${I18n.t('opts-tag-no-tags-msg')}</p>`;
+    return;
+  }
+  list.innerHTML = '';
+  for (const tag of tagDefinitions) {
+    const count = Object.values(wordTags).filter((t) => t === tag.id).length;
+    const item = document.createElement('div');
+    item.className = 'tag-item';
+    item.dataset.id = tag.id;
+    item.innerHTML = `
+      <span class="tag-swatch" style="background:${escapeHtml(tag.color)}"></span>
+      <span class="tag-item-name">${escapeHtml(tag.name)}</span>
+      <span class="tag-item-count">${count}</span>
+      <div class="tag-item-actions">
+        <button class="btn btn-sm btn-secondary tag-edit-btn" data-id="${escapeHtml(tag.id)}">${I18n.t('opts-tag-btn-edit')}</button>
+        <button class="btn btn-sm btn-danger tag-delete-btn" data-id="${escapeHtml(tag.id)}">${I18n.t('opts-tag-btn-delete')}</button>
+      </div>`;
+    list.appendChild(item);
+  }
+}
+
+document.getElementById('manageTagsBtn').addEventListener('click', openTagsModal);
+
+document.getElementById('addTagForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const nameEl = document.getElementById('newTagName');
+  const colorEl = document.getElementById('newTagColor');
+  const name = nameEl.value.trim();
+  if (!name) { nameEl.focus(); return; }
+  tagDefinitions.push({ id: generateTagId(), name, color: colorEl.value });
+  saveTagDefinitions(() => {
+    renderTagsModal();
+    renderTagFilter();
+    renderWordList(document.getElementById('searchInput').value);
+    nameEl.value = '';
+    colorEl.value = '#4A90D9';
+  });
+});
+
+document.getElementById('tagsList').addEventListener('click', (e) => {
+  if (e.target.classList.contains('tag-delete-btn')) {
+    const id = e.target.dataset.id;
+    if (!confirm(I18n.t('confirm-delete-tag'))) return;
+    tagDefinitions = tagDefinitions.filter((t) => t.id !== id);
+    for (const word of Object.keys(wordTags)) {
+      if (wordTags[word] === id) delete wordTags[word];
+    }
+    if (activeTagFilter === id) {
+      activeTagFilter = 'all';
+    }
+    saveTagDefinitions(() => {
+      saveWordTags(() => {
+        renderTagsModal();
+        renderTagFilter();
+        renderWordList(document.getElementById('searchInput').value);
+      });
+    });
+    return;
+  }
+
+  if (e.target.classList.contains('tag-edit-btn')) {
+    const id = e.target.dataset.id;
+    const tag = getTag(id);
+    if (!tag) return;
+    const item = e.target.closest('.tag-item');
+    if (!item) return;
+
+    const savedHtml = item.innerHTML;
+    item.innerHTML = `
+      <input type="text" class="tag-edit-name-input" value="${escapeHtml(tag.name)}" maxlength="30">
+      <input type="color" class="tag-edit-color-input" value="${escapeHtml(tag.color)}">
+      <div class="tag-item-actions">
+        <button class="btn btn-sm btn-primary tag-save-edit-btn" data-id="${escapeHtml(id)}">${I18n.t('opts-tag-btn-save')}</button>
+        <button class="btn btn-sm btn-secondary tag-cancel-edit-btn">${I18n.t('opts-tag-btn-cancel')}</button>
+      </div>`;
+    item.querySelector('.tag-edit-name-input').focus();
+
+    item.querySelector('.tag-cancel-edit-btn').addEventListener('click', () => {
+      item.innerHTML = savedHtml;
+    }, { once: true });
+
+    item.querySelector('.tag-save-edit-btn').addEventListener('click', () => {
+      const newName = item.querySelector('.tag-edit-name-input').value.trim();
+      const newColor = item.querySelector('.tag-edit-color-input').value;
+      if (!newName) { item.querySelector('.tag-edit-name-input').focus(); return; }
+      const idx = tagDefinitions.findIndex((t) => t.id === id);
+      if (idx >= 0) {
+        tagDefinitions[idx] = { id, name: newName, color: newColor };
+        saveTagDefinitions(() => {
+          renderTagsModal();
+          renderTagFilter();
+          renderWordList(document.getElementById('searchInput').value);
+        });
+      }
+    }, { once: true });
+  }
+});
+
+document.getElementById('closeTagsModalBtn').addEventListener('click', closeTagsModal);
+document.getElementById('tagsModal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeTagsModal();
+});
+
 document.addEventListener('keydown', (e) => {
   // While recording a new keybind, intercept all key events
   if (recording) {
@@ -480,7 +748,11 @@ document.addEventListener('keydown', (e) => {
     }
     return;
   }
-  if (e.key === 'Escape') closeAchievementsModal();
+  if (e.key === 'Escape') {
+    closeAchievementsModal();
+    closeTagsModal();
+    closeTagPicker();
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -493,6 +765,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     const lang = changes.language.newValue || 'pt';
     I18n.apply(lang);
     document.getElementById('languageSelect').value = lang;
+    renderTagFilter();
     renderWordList(document.getElementById('searchInput').value);
     const modal = document.getElementById('achievementsModal');
     if (modal && !modal.hidden) renderAchievements();
@@ -508,6 +781,15 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (changes.theme) {
     applyTheme(changes.theme.newValue || 'light');
   }
+  if (changes.tagDefinitions) {
+    tagDefinitions = changes.tagDefinitions.newValue || [];
+    renderTagFilter();
+    renderWordList(document.getElementById('searchInput').value);
+  }
+  if (changes.wordTags) {
+    wordTags = changes.wordTags.newValue || {};
+    renderWordList(document.getElementById('searchInput').value);
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -517,6 +799,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 loadAll((lang) => {
   I18n.apply(lang);
   document.getElementById('languageSelect').value = lang;
+  renderTagFilter();
   renderWordList();
   populateSettings();
 });
