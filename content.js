@@ -81,12 +81,14 @@ function loadSettings() {
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
+  // Update wordFormats first so recheckAllElements sees the latest formatting
+  // when both wordMap and wordFormats change in the same storage.set() call.
+  if (changes.wordFormats) {
+    wordFormats = changes.wordFormats.newValue || {};
+  }
   if (changes.wordMap) {
     wordMap = changes.wordMap.newValue || {};
     recheckAllElements();
-  }
-  if (changes.wordFormats) {
-    wordFormats = changes.wordFormats.newValue || {};
   }
   if (changes.enabled !== undefined) enabled = changes.enabled.newValue !== false;
   if (changes.settings) {
@@ -2006,11 +2008,59 @@ function escapeHtml(text) {
 // Message listener (background.js → content script)
 // ---------------------------------------------------------------------------
 
+/**
+ * Transforms the current text selection to upper or lower case.
+ * Works for both input/textarea elements and contenteditable regions.
+ */
+function applySelectionCase(transform) {
+  const active = document.activeElement;
+
+  // --- Input / Textarea ---
+  if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA') &&
+      active.type !== 'password') {
+    const start = active.selectionStart;
+    const end   = active.selectionEnd;
+    if (start === end) return; // nothing selected
+    const val = active.value;
+    const replacement = transform === 'upper'
+      ? val.slice(start, end).toUpperCase()
+      : val.slice(start, end).toLowerCase();
+    active.value = val.slice(0, start) + replacement + val.slice(end);
+    active.setSelectionRange(start, start + replacement.length);
+    active.dispatchEvent(new Event('input', { bubbles: true }));
+    return;
+  }
+
+  // --- ContentEditable ---
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+
+  const range = selection.getRangeAt(0);
+  const selectedText = range.toString();
+  if (!selectedText) return;
+
+  const replacement = transform === 'upper'
+    ? selectedText.toUpperCase()
+    : selectedText.toLowerCase();
+
+  range.deleteContents();
+  range.insertNode(document.createTextNode(replacement));
+
+  // Re-select the inserted text
+  range.setStart(range.startContainer, range.startOffset);
+  range.setEnd(range.startContainer, range.startOffset + replacement.length);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.action === 'showAddWordDialog') {
     showAddWordDialog(msg.word || '');
   }
   if (msg.action === 'showDefinitionLookup') {
     showDefinitionLookup(msg.word || '', msg.lang || 'pt');
+  }
+  if (msg.action === 'applyCase') {
+    applySelectionCase(msg.transform || 'upper');
   }
 });
