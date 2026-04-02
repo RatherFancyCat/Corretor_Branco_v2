@@ -1,6 +1,7 @@
 'use strict';
 
 let wordMap = {};
+let wordFormats = {};
 let enabled = true;
 let settings = { autoCapitalize: false, blacklistedDomains: [] };
 let blockedByDomain = false;
@@ -67,8 +68,9 @@ function checkDomainBlock() {
 }
 
 function loadSettings() {
-  chrome.storage.local.get(['wordMap', 'enabled', 'settings', 'language', 'secretOptions'], (data) => {
+  chrome.storage.local.get(['wordMap', 'wordFormats', 'enabled', 'settings', 'language', 'secretOptions'], (data) => {
     wordMap = data.wordMap || {};
+    wordFormats = data.wordFormats || {};
     enabled = data.enabled !== false;
     settings = data.settings || { autoCapitalize: false, blacklistedDomains: [] };
     currentLang = data.language || 'pt';
@@ -79,6 +81,11 @@ function loadSettings() {
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
+  // Update wordFormats first so recheckAllElements sees the latest formatting
+  // when both wordMap and wordFormats change in the same storage.set() call.
+  if (changes.wordFormats) {
+    wordFormats = changes.wordFormats.newValue || {};
+  }
   if (changes.wordMap) {
     wordMap = changes.wordMap.newValue || {};
     recheckAllElements();
@@ -1035,6 +1042,87 @@ function applyWordMapToText(text) {
 }
 
 /**
+ * Apply wordMap corrections (including bold/italic formatting) to a single
+ * text node inside a contenteditable element.
+ *
+ * When no word in the node has formatting the node's textContent is updated in
+ * place (fast path).  When at least one corrected word carries bold/italic
+ * formatting the text node is replaced with a DocumentFragment that contains
+ * plain TextNodes and <strong>/<em> elements as required.
+ */
+function recheckContentEditableNode(textNode) {
+  const text = textNode.textContent;
+  const parts = [];   // { text: string, formatted: bool, bold?: bool, italic?: bool }
+  let lastIndex = 0;
+  let hasFormatting = false;
+
+  text.replace(/\S+/g, (token, offset) => {
+    // Preserve any whitespace / text before this token
+    if (offset > lastIndex) {
+      parts.push({ text: text.substring(lastIndex, offset), formatted: false });
+    }
+
+    const strippedLeading = token.replace(LEADING_PUNCT_RE, '');
+    const coreWord = strippedLeading.replace(TRAILING_PUNCT_RE, '');
+    const correction = coreWord ? getCorrection(coreWord) : null;
+
+    if (correction) {
+      const fmt = wordFormats[coreWord.toLowerCase()] || {};
+      const leading  = token.slice(0, token.length - strippedLeading.length);
+      const trailing = strippedLeading.slice(coreWord.length);
+
+      if (fmt.bold || fmt.italic) {
+        hasFormatting = true;
+        if (leading)  parts.push({ text: leading,  formatted: false });
+        parts.push({ text: correction, formatted: true, bold: !!fmt.bold, italic: !!fmt.italic });
+        if (trailing) parts.push({ text: trailing, formatted: false });
+      } else {
+        parts.push({ text: leading + correction + trailing, formatted: false });
+      }
+    } else {
+      parts.push({ text: token, formatted: false });
+    }
+
+    lastIndex = offset + token.length;
+  });
+
+  // Preserve any trailing whitespace
+  if (lastIndex < text.length) {
+    parts.push({ text: text.substring(lastIndex), formatted: false });
+  }
+
+  if (!hasFormatting) {
+    // Fast path: plain text update
+    textNode.textContent = parts.map((p) => p.text).join('');
+    return;
+  }
+
+  // Slow path: rebuild as DOM nodes with inline formatting elements
+  const fragment = document.createDocumentFragment();
+  for (const part of parts) {
+    if (!part.formatted) {
+      if (part.text) fragment.appendChild(document.createTextNode(part.text));
+    } else {
+      let el;
+      if (part.bold && part.italic) {
+        el = document.createElement('strong');
+        const inner = document.createElement('em');
+        inner.textContent = part.text;
+        el.appendChild(inner);
+      } else if (part.bold) {
+        el = document.createElement('strong');
+        el.textContent = part.text;
+      } else {
+        el = document.createElement('em');
+        el.textContent = part.text;
+      }
+      fragment.appendChild(el);
+    }
+  }
+  textNode.parentNode.replaceChild(fragment, textNode);
+}
+
+/**
  * Scan all editable elements on the page and apply the current wordMap to
  * any text that hasn't been corrected yet.  Called after wordMap changes so
  * that words the user just added don't remain wrong in existing fields.
@@ -1054,9 +1142,17 @@ function recheckAllElements() {
         let node;
         while ((node = walker.nextNode())) {
           const newText = applyWordMapToText(node.textContent);
-          if (newText !== node.textContent) pending.push({ node, newText });
+          if (newText !== node.textContent) pending.push(node);
         }
-        for (const { node, newText } of pending) node.textContent = newText;
+        // Nodes are collected before any DOM changes to avoid invalidating the
+        // TreeWalker mid-walk.  recheckContentEditableNode replaces individual
+        // text nodes in place; guard with isConnected in case an earlier
+        // replacement happened to be an ancestor of a later pending node
+        // (text nodes have no children, so this is a theoretical edge-case,
+        // but the check is cheap and makes the loop robust).
+        for (const node of pending) {
+          if (node.isConnected) recheckContentEditableNode(node);
+        }
       }
     });
   } finally {
@@ -1158,23 +1254,84 @@ function correctContentEditable(element) {
   const trailingLen = strippedLeading.length - typedWord.length;
   const wordStart = cursorPos - 1 - rawToken.length + leadingLen;
 
+  // Check if this word has bold/italic formatting.  The wordMap key is always
+  // lower-case, so use the lower-case form of the typed word as the lookup key.
+  const fmt = wordFormats[typedWord.toLowerCase()] || {};
+
   applying = true;
   try {
-    node.textContent =
-      text.substring(0, wordStart) + correction + text.substring(wordStart + typedWord.length);
+    if (fmt.bold || fmt.italic) {
+      // --- Formatted replacement: split text node, insert inline element ---
+      const beforeText = text.substring(0, wordStart);
+      const afterText  = text.substring(wordStart + typedWord.length);
 
-    const newRange = document.createRange();
-    const newOffset = Math.min(wordStart + correction.length + trailingLen + 1, node.textContent.length);
-    newRange.setStart(node, newOffset);
-    newRange.collapse(true);
-    selection.removeAllRanges();
-    selection.addRange(newRange);
+      // Build the inline formatting element (nesting <em> inside <strong> when
+      // both options are active)
+      let fmtEl;
+      if (fmt.bold && fmt.italic) {
+        fmtEl = document.createElement('strong');
+        const inner = document.createElement('em');
+        inner.textContent = correction;
+        fmtEl.appendChild(inner);
+      } else if (fmt.bold) {
+        fmtEl = document.createElement('strong');
+        fmtEl.textContent = correction;
+      } else {
+        fmtEl = document.createElement('em');
+        fmtEl.textContent = correction;
+      }
+
+      const beforeNode = document.createTextNode(beforeText);
+      const afterNode  = document.createTextNode(afterText);
+
+      const parent = node.parentNode;
+      parent.insertBefore(beforeNode, node);
+      parent.insertBefore(fmtEl, node);
+      parent.insertBefore(afterNode, node);
+      parent.removeChild(node);
+
+      // Place cursor after the trailing punctuation + separator in afterNode
+      const newRange = document.createRange();
+      const newOffset = Math.min(trailingLen + 1, afterNode.textContent.length);
+      newRange.setStart(afterNode, newOffset);
+      newRange.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+
+      // Pass the innermost text node to the highlight helper.
+      // Structure: bold-only → <strong>text</strong>
+      //            italic-only → <em>text</em>
+      //            both        → <strong><em>text</em></strong>
+      // fmtEl is always the outermost element; its lastChild is either the
+      // text node (single-level) or the inner <em> element (two-level).
+      // The defensive checks below handle both cases safely.
+      let correctionNode = fmtEl.lastChild;
+      if (correctionNode && correctionNode.nodeType !== Node.TEXT_NODE) {
+        correctionNode = correctionNode.firstChild || null;
+      }
+      showCorrectionFlair(element);
+      if (correctionNode && correctionNode.nodeType === Node.TEXT_NODE) {
+        highlightCorrectedWordCE(correctionNode, 0, correction.length);
+      }
+    } else {
+      // --- Plain text replacement (original logic) ---
+      node.textContent =
+        text.substring(0, wordStart) + correction + text.substring(wordStart + typedWord.length);
+
+      const newRange = document.createRange();
+      const newOffset = Math.min(wordStart + correction.length + trailingLen + 1, node.textContent.length);
+      newRange.setStart(node, newOffset);
+      newRange.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+
+      showCorrectionFlair(element);
+      highlightCorrectedWordCE(node, wordStart, correction.length);
+    }
   } finally {
     applying = false;
   }
 
-  showCorrectionFlair(element);
-  highlightCorrectedWordCE(node, wordStart, correction.length);
   recordCorrection();
 }
 
@@ -1470,6 +1627,37 @@ function showAddWordDialog(selectedWord) {
     .btn-cancel:hover { background: #c83434; }
     .btn-ok { background: #38b560; color: #fff; }
     .btn-ok:hover { background: #2d9e52; }
+    .fmt-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .fmt-row-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .btn-fmt {
+      width: 30px;
+      height: 30px;
+      border: 1.5px solid #ccc;
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 13px;
+      font-family: inherit;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      color: #555;
+    }
+    .btn-fmt:hover { background: #f0f4ff; border-color: #4A90D9; }
+    .btn-fmt.active { background: #4A90D9; border-color: #4A90D9; color: #fff; }
     .error {
       font-size: 11px;
       color: #e04040;
@@ -1513,6 +1701,28 @@ function showAddWordDialog(selectedWord) {
   cols.appendChild(incorrectCol);
   cols.appendChild(correctCol);
 
+  // Format row (bold / italic toggles)
+  const fmtRow = document.createElement('div');
+  fmtRow.className = 'fmt-row';
+  const fmtLabel = document.createElement('span');
+  fmtLabel.className = 'fmt-row-label';
+  fmtLabel.textContent = I18n.t('opts-format-label');
+  const boldBtn = document.createElement('button');
+  boldBtn.type = 'button';
+  boldBtn.className = 'btn-fmt';
+  boldBtn.title = I18n.t('opts-format-bold');
+  boldBtn.innerHTML = '<b>B</b>';
+  const italicBtn = document.createElement('button');
+  italicBtn.type = 'button';
+  italicBtn.className = 'btn-fmt';
+  italicBtn.title = I18n.t('opts-format-italic');
+  italicBtn.innerHTML = '<i>I</i>';
+  boldBtn.addEventListener('click', () => boldBtn.classList.toggle('active'));
+  italicBtn.addEventListener('click', () => italicBtn.classList.toggle('active'));
+  fmtRow.appendChild(fmtLabel);
+  fmtRow.appendChild(boldBtn);
+  fmtRow.appendChild(italicBtn);
+
   // Buttons
   const btns = document.createElement('div');
   btns.className = 'btns';
@@ -1530,6 +1740,7 @@ function showAddWordDialog(selectedWord) {
   errorEl.className = 'error';
 
   dialog.appendChild(cols);
+  dialog.appendChild(fmtRow);
   dialog.appendChild(btns);
   dialog.appendChild(errorEl);
 
@@ -1577,10 +1788,18 @@ function showAddWordDialog(selectedWord) {
       return;
     }
 
-    chrome.storage.local.get('wordMap', (data) => {
+    chrome.storage.local.get(['wordMap', 'wordFormats'], (data) => {
       const wm = data.wordMap || {};
       wm[incorrect] = correct;
-      chrome.storage.local.set({ wordMap: wm }, closeDialog);
+      const wf = data.wordFormats || {};
+      const isBold = boldBtn.classList.contains('active');
+      const isItalic = italicBtn.classList.contains('active');
+      if (isBold || isItalic) {
+        wf[incorrect] = { bold: isBold, italic: isItalic };
+      } else {
+        delete wf[incorrect];
+      }
+      chrome.storage.local.set({ wordMap: wm, wordFormats: wf }, closeDialog);
     });
   }
 
@@ -1789,11 +2008,61 @@ function escapeHtml(text) {
 // Message listener (background.js → content script)
 // ---------------------------------------------------------------------------
 
+/**
+ * Transforms the current text selection to upper or lower case.
+ * Works for both input/textarea elements and contenteditable regions.
+ */
+function applySelectionCase(transform) {
+  const active = document.activeElement;
+
+  // --- Input / Textarea ---
+  if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA') &&
+      active.type !== 'password') {
+    const start = active.selectionStart;
+    const end   = active.selectionEnd;
+    if (start === end) return; // nothing selected
+    const val = active.value;
+    const replacement = transform === 'upper'
+      ? val.slice(start, end).toUpperCase()
+      : val.slice(start, end).toLowerCase();
+    active.value = val.slice(0, start) + replacement + val.slice(end);
+    active.setSelectionRange(start, start + replacement.length);
+    active.dispatchEvent(new Event('input', { bubbles: true }));
+    return;
+  }
+
+  // --- ContentEditable ---
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+
+  const range = selection.getRangeAt(0);
+  const selectedText = range.toString();
+  if (!selectedText) return;
+
+  const replacement = transform === 'upper'
+    ? selectedText.toUpperCase()
+    : selectedText.toLowerCase();
+
+  const textNode = document.createTextNode(replacement);
+  range.deleteContents();
+  range.insertNode(textNode);
+
+  // Re-select the inserted text using the explicit text node reference,
+  // since range.startContainer/Offset may point to the parent after insertNode.
+  range.setStart(textNode, 0);
+  range.setEnd(textNode, replacement.length);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.action === 'showAddWordDialog') {
     showAddWordDialog(msg.word || '');
   }
   if (msg.action === 'showDefinitionLookup') {
     showDefinitionLookup(msg.word || '', msg.lang || 'pt');
+  }
+  if (msg.action === 'applyCase') {
+    applySelectionCase(msg.transform || 'upper');
   }
 });

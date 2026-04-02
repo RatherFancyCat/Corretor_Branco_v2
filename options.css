@@ -109,6 +109,60 @@ header p  { font-size: 13px; opacity: 0.85; margin-top: 2px; }
   margin-top: 8px;
 }
 
+/* ---- Format toggle buttons (in add-word form) ---- */
+.form-group--format {
+  flex: 0 0 auto;
+  min-width: unset;
+}
+
+.format-toggles {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.btn-fmt {
+  width: 32px;
+  height: 32px;
+  border: 1.5px solid #ddd;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+}
+
+.btn-fmt:hover { background: #f0f4ff; border-color: #4A90D9; }
+
+.btn-fmt.active {
+  background: #4A90D9;
+  border-color: #4A90D9;
+  color: #fff;
+}
+
+/* ---- Format badge (in word list table) ---- */
+.fmt-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #4A90D9;
+  color: #fff;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.col-format { width: 70px; text-align: center; }
+
 /* ---- Toolbar (Import/Export card) ---- */
 .toolbar-buttons {
   display: flex;
@@ -311,7 +365,8 @@ tr:last-child td { border-bottom: none; }
 tr:hover td { background: #fafbff; }
 
 .word-incorrect { color: #C0392B; font-weight: 600; }
-.word-correct   { color: #27AE60; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.word-correct   { color: #27AE60; font-weight: 600; }
+.word-correct-inner { display: inline-flex; align-items: center; gap: 6px; }
 .col-action     { width: 80px; text-align: center; }
 
 /* ---- Lookup (?) button ---- */
@@ -556,6 +611,20 @@ html[data-theme="dark"] .form-group input:focus {
 }
 
 html[data-theme="dark"] .form-arrow { color: #6b7280; }
+
+html[data-theme="dark"] .btn-fmt {
+  background: #1f2937;
+  border-color: #374151;
+  color: #d1d5db;
+}
+
+html[data-theme="dark"] .btn-fmt:hover { background: #374151; border-color: #4A90D9; }
+
+html[data-theme="dark"] .btn-fmt.active {
+  background: #4A90D9;
+  border-color: #4A90D9;
+  color: #fff;
+}
 
 html[data-theme="dark"] .search-input {
   background: #111827;

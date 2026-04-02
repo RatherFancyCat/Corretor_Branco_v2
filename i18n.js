@@ -62,6 +62,10 @@ const TRANSLATIONS = {
     'msg-skipped': 'Ignorada(s) {count} linha(s) inválida(s).',
     'err-nothing-to-export': 'Não há pares de palavras para exportar.',
     'btn-delete': 'Eliminar',
+    'opts-format-label': 'Formatação',
+    'opts-format-bold': 'Negrito',
+    'opts-format-italic': 'Itálico',
+    'opts-th-format': 'Formato',
     'ctx-dialog-ok': 'Ok',
     'ctx-dialog-cancel': 'Cancelar',
     'sandbox-area-h2': 'Área de Teste',
@@ -230,6 +234,10 @@ const TRANSLATIONS = {
     'msg-skipped': 'Skipped {count} invalid line(s).',
     'err-nothing-to-export': 'There are no word pairs to export.',
     'btn-delete': 'Delete',
+    'opts-format-label': 'Formatting',
+    'opts-format-bold': 'Bold',
+    'opts-format-italic': 'Italic',
+    'opts-th-format': 'Format',
     'ctx-dialog-ok': 'Ok',
     'ctx-dialog-cancel': 'Cancel',
     'sandbox-area-h2': 'Test Area',
@@ -396,6 +404,10 @@ const TRANSLATIONS = {
     'msg-skipped': 'Omitida(s) {count} línea(s) no válida(s).',
     'err-nothing-to-export': 'No hay pares de palabras para exportar.',
     'btn-delete': 'Eliminar',
+    'opts-format-label': 'Formato',
+    'opts-format-bold': 'Negrita',
+    'opts-format-italic': 'Cursiva',
+    'opts-th-format': 'Formato',
     'ctx-dialog-ok': 'Ok',
     'ctx-dialog-cancel': 'Cancelar',
     'sandbox-area-h2': 'Área de Prueba',
@@ -564,6 +576,10 @@ const TRANSLATIONS = {
     'msg-skipped': '{count} ligne(s) invalide(s) ignorée(s).',
     'err-nothing-to-export': "Il n'y a aucune paire de mots à exporter.",
     'btn-delete': 'Supprimer',
+    'opts-format-label': 'Mise en forme',
+    'opts-format-bold': 'Gras',
+    'opts-format-italic': 'Italique',
+    'opts-th-format': 'Format',
     'ctx-dialog-ok': 'Ok',
     'ctx-dialog-cancel': 'Annuler',
     'sandbox-area-h2': 'Zone de test',
@@ -730,6 +746,10 @@ const TRANSLATIONS = {
     'msg-skipped': '{count} ungültige Zeile(n) übersprungen.',
     'err-nothing-to-export': 'Es gibt keine Wortpaare zum Exportieren.',
     'btn-delete': 'Löschen',
+    'opts-format-label': 'Formatierung',
+    'opts-format-bold': 'Fett',
+    'opts-format-italic': 'Kursiv',
+    'opts-th-format': 'Format',
     'ctx-dialog-ok': 'Ok',
     'ctx-dialog-cancel': 'Abbrechen',
     'sandbox-area-h2': 'Testbereich',
@@ -898,6 +918,10 @@ const TRANSLATIONS = {
     'msg-skipped': '已跳过 {count} 行无效数据。',
     'err-nothing-to-export': '没有可导出的词对。',
     'btn-delete': '删除',
+    'opts-format-label': '格式',
+    'opts-format-bold': '粗体',
+    'opts-format-italic': '斜体',
+    'opts-th-format': '格式',
     'ctx-dialog-ok': 'Ok',
     'ctx-dialog-cancel': '取消',
     'sandbox-area-h2': '测试区域',
@@ -1063,6 +1087,9 @@ const I18n = {
     });
     document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
       el.placeholder = this.t(el.dataset.i18nPlaceholder);
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach((el) => {
+      el.title = this.t(el.dataset.i18nTitle);
     });
     document.documentElement.lang = LANG_HTML_CODES[lang] || lang || 'pt';
   },

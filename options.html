@@ -113,6 +113,13 @@
             <label for="correctWord" data-i18n="opts-correct-label">Correção</label>
             <input type="text" id="correctWord" data-i18n-placeholder="opts-correct-ph" placeholder="ex: não">
           </div>
+          <div class="form-group form-group--format">
+            <label data-i18n="opts-format-label">Formatação</label>
+            <div class="format-toggles">
+              <button type="button" id="fmtBoldBtn" class="btn-fmt" title="Bold" data-i18n-title="opts-format-bold"><b>B</b></button>
+              <button type="button" id="fmtItalicBtn" class="btn-fmt" title="Italic" data-i18n-title="opts-format-italic"><i>I</i></button>
+            </div>
+          </div>
           <button type="submit" class="btn btn-primary" data-i18n="opts-btn-add">Adicionar</button>
         </div>
         <p id="addError" class="error-msg" hidden></p>
@@ -142,6 +149,7 @@
             <tr>
               <th data-i18n="opts-th-incorrect">Palavra com Erro</th>
               <th data-i18n="opts-th-correct">Correção</th>
+              <th class="col-format" data-i18n="opts-th-format">Formato</th>
               <th class="col-tag" data-i18n="opts-th-tag">Etiqueta</th>
               <th class="col-action" data-i18n="opts-th-action">Ação</th>
             </tr>

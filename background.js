@@ -18,6 +18,24 @@ const LOOKUP_LABELS = {
   zh: '查找释义',
 };
 
+const CAPITALIZE_LABELS = {
+  pt: 'Colocar seleção em maiúsculas',
+  en: 'Capitalize selection',
+  es: 'Poner selección en mayúsculas',
+  fr: 'Mettre la sélection en majuscules',
+  de: 'Auswahl in Großbuchstaben',
+  zh: '将选中内容转为大写',
+};
+
+const UNCAPITALIZE_LABELS = {
+  pt: 'Colocar seleção em minúsculas',
+  en: 'Uncapitalize selection',
+  es: 'Poner selección en minúsculas',
+  fr: 'Mettre la sélection en minuscules',
+  de: 'Auswahl in Kleinbuchstaben',
+  zh: '将选中内容转为小写',
+};
+
 // Languages handled by dictionaryapi.dev (subset used by this extension).
 // Keep in sync with the identical constant in options.js (separate execution context).
 const DICT_API_LANGS = new Set(['en']);
@@ -63,8 +81,10 @@ function normalizeDicionarioAberto(apiData) {
 }
 
 function buildContextMenu(lang) {
-  const addTitle    = MENU_LABELS[lang]   || MENU_LABELS.pt;
-  const lookupTitle = LOOKUP_LABELS[lang] || LOOKUP_LABELS.en;
+  const addTitle         = MENU_LABELS[lang]         || MENU_LABELS.pt;
+  const lookupTitle      = LOOKUP_LABELS[lang]       || LOOKUP_LABELS.en;
+  const capitalizeTitle  = CAPITALIZE_LABELS[lang]   || CAPITALIZE_LABELS.en;
+  const uncapitalizeTitle = UNCAPITALIZE_LABELS[lang] || UNCAPITALIZE_LABELS.en;
   // removeAll first so re-registration never creates duplicates
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
@@ -75,6 +95,16 @@ function buildContextMenu(lang) {
     chrome.contextMenus.create({
       id: 'cb-lookup-word',
       title: lookupTitle,
+      contexts: ['selection'],
+    });
+    chrome.contextMenus.create({
+      id: 'cb-capitalize-selection',
+      title: capitalizeTitle,
+      contexts: ['selection'],
+    });
+    chrome.contextMenus.create({
+      id: 'cb-uncapitalize-selection',
+      title: uncapitalizeTitle,
       contexts: ['selection'],
     });
   });
@@ -127,6 +157,10 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         lang: data.language || 'pt',
       });
     });
+  } else if (info.menuItemId === 'cb-capitalize-selection') {
+    chrome.tabs.sendMessage(tab.id, { action: 'applyCase', transform: 'upper' });
+  } else if (info.menuItemId === 'cb-uncapitalize-selection') {
+    chrome.tabs.sendMessage(tab.id, { action: 'applyCase', transform: 'lower' });
   }
 });
 

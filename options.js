@@ -6,6 +6,7 @@ let cbStats = { wordsAdded: 0, correctionsApplied: 0 };
 let cbAchievements = {};
 let tagDefinitions = [];
 let wordTags = {};
+let wordFormats = {};
 let activeTagFilter = 'all';
 
 // ---------------------------------------------------------------------------
@@ -13,13 +14,14 @@ let activeTagFilter = 'all';
 // ---------------------------------------------------------------------------
 
 function loadAll(callback) {
-  chrome.storage.local.get(['wordMap', 'settings', 'language', 'cbStats', 'cbAchievements', 'theme', 'tagDefinitions', 'wordTags'], (data) => {
+  chrome.storage.local.get(['wordMap', 'settings', 'language', 'cbStats', 'cbAchievements', 'theme', 'tagDefinitions', 'wordTags', 'wordFormats'], (data) => {
     wordMap = data.wordMap || {};
     settings = data.settings || { autoCapitalize: false, blacklistedDomains: [] };
     cbStats = data.cbStats || { wordsAdded: 0, correctionsApplied: 0 };
     cbAchievements = data.cbAchievements || {};
     tagDefinitions = data.tagDefinitions || [];
     wordTags = data.wordTags || {};
+    wordFormats = data.wordFormats || {};
     const lang = data.language || 'pt';
     I18n._lang = lang;
     applyTheme(data.theme || 'light');
@@ -41,6 +43,10 @@ function saveTagDefinitions(callback) {
 
 function saveWordTags(callback) {
   chrome.storage.local.set({ wordTags }, callback);
+}
+
+function saveWordFormats(callback) {
+  chrome.storage.local.set({ wordFormats }, callback);
 }
 
 function applyTheme(theme) {
@@ -149,13 +155,21 @@ function renderWordList(filter) {
         data-word="${escapeHtml(incorrect)}">${I18n.t('opts-tag-add')}</button>`;
     }
     const tr = document.createElement('tr');
+    const fmt = wordFormats[incorrect] || {};
+    const fmtCellHtml = [
+      fmt.bold ? `<span class="fmt-badge"><b>B</b></span>` : '',
+      fmt.italic ? `<span class="fmt-badge"><i>I</i></span>` : '',
+    ].join(' ') || '—';
     tr.innerHTML = `
       <td class="word-incorrect">${escapeHtml(incorrect)}</td>
       <td class="word-correct">
-        <span>${escapeHtml(correct)}</span>
-        <button class="lookup-btn" data-word="${escapeHtml(correct)}"
-                title="${escapeHtml(I18n.t('lookup-btn-title'))}">?</button>
+        <span class="word-correct-inner">
+          <span>${escapeHtml(correct)}</span>
+          <button class="lookup-btn" data-word="${escapeHtml(correct)}"
+                  title="${escapeHtml(I18n.t('lookup-btn-title'))}">?</button>
+        </span>
       </td>
+      <td class="col-format">${fmtCellHtml}</td>
       <td class="col-tag">${tagCellHtml}</td>
       <td class="col-action">
         <button class="btn btn-sm btn-danger delete-btn"
@@ -269,12 +283,26 @@ document.getElementById('addWordForm').addEventListener('submit', (e) => {
   }
 
   wordMap[incorrect] = correct;
+  const fmt = {
+    bold: document.getElementById('fmtBoldBtn').classList.contains('active'),
+    italic: document.getElementById('fmtItalicBtn').classList.contains('active'),
+  };
+  if (fmt.bold || fmt.italic) {
+    wordFormats[incorrect] = fmt;
+  } else {
+    delete wordFormats[incorrect];
+  }
   saveWordMap(() => {
-    incorrectEl.value = '';
-    correctEl.value = '';
-    incorrectEl.focus();
-    renderWordList(document.getElementById('searchInput').value);
-    recordWordsAdded(1);
+    saveWordFormats(() => {
+      incorrectEl.value = '';
+      correctEl.value = '';
+      // Reset format toggles
+      document.getElementById('fmtBoldBtn').classList.remove('active');
+      document.getElementById('fmtItalicBtn').classList.remove('active');
+      incorrectEl.focus();
+      renderWordList(document.getElementById('searchInput').value);
+      recordWordsAdded(1);
+    });
   });
 });
 
@@ -298,8 +326,9 @@ document.getElementById('wordTableBody').addEventListener('click', (e) => {
   if (Object.prototype.hasOwnProperty.call(wordMap, word)) {
     delete wordMap[word];
     delete wordTags[word];
+    delete wordFormats[word];
     saveWordMap(() => {
-      saveWordTags(() => renderWordList(document.getElementById('searchInput').value));
+      saveWordTags(() => saveWordFormats(() => renderWordList(document.getElementById('searchInput').value)));
     });
   }
 });
@@ -973,11 +1002,23 @@ chrome.storage.onChanged.addListener((changes, area) => {
     wordTags = changes.wordTags.newValue || {};
     renderWordList(document.getElementById('searchInput').value);
   }
+  if (changes.wordFormats) {
+    wordFormats = changes.wordFormats.newValue || {};
+    renderWordList(document.getElementById('searchInput').value);
+  }
 });
 
 // ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
+
+document.getElementById('fmtBoldBtn').addEventListener('click', () => {
+  document.getElementById('fmtBoldBtn').classList.toggle('active');
+});
+
+document.getElementById('fmtItalicBtn').addEventListener('click', () => {
+  document.getElementById('fmtItalicBtn').classList.toggle('active');
+});
 
 loadAll((lang) => {
   I18n.apply(lang);
