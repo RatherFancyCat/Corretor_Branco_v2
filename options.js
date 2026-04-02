@@ -276,17 +276,17 @@ document.getElementById('addWordForm').addEventListener('submit', (e) => {
     correctEl.focus();
     return;
   }
-  if (incorrect === correct) {
+  const fmt = {
+    bold: document.getElementById('fmtBoldBtn').classList.contains('active'),
+    italic: document.getElementById('fmtItalicBtn').classList.contains('active'),
+  };
+  if (incorrect === correct && !fmt.bold && !fmt.italic) {
     errorEl.textContent = I18n.t('err-same-words');
     errorEl.hidden = false;
     return;
   }
 
   wordMap[incorrect] = correct;
-  const fmt = {
-    bold: document.getElementById('fmtBoldBtn').classList.contains('active'),
-    italic: document.getElementById('fmtItalicBtn').classList.contains('active'),
-  };
   if (fmt.bold || fmt.italic) {
     wordFormats[incorrect] = fmt;
   } else {
