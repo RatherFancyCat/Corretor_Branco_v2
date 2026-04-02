@@ -1207,12 +1207,17 @@ function correctContentEditable(element) {
       selection.removeAllRanges();
       selection.addRange(newRange);
 
-      // Pass the innermost text node to the highlight helper
-      const correctionNode = fmtEl.lastChild.nodeType === Node.TEXT_NODE
-        ? fmtEl.lastChild
-        : fmtEl.lastChild.firstChild;
+      // Pass the innermost text node to the highlight helper.
+      // When both bold and italic are set the structure is <strong><em>text</em></strong>,
+      // so we navigate to the first text-node descendant defensively.
+      let correctionNode = fmtEl.lastChild;
+      if (correctionNode && correctionNode.nodeType !== Node.TEXT_NODE) {
+        correctionNode = correctionNode.firstChild;
+      }
       showCorrectionFlair(element);
-      highlightCorrectedWordCE(correctionNode, 0, correction.length);
+      if (correctionNode && correctionNode.nodeType === Node.TEXT_NODE) {
+        highlightCorrectedWordCE(correctionNode, 0, correction.length);
+      }
     } else {
       // --- Plain text replacement (original logic) ---
       node.textContent =
