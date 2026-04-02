@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Corretor Branco",
-  "version": "2.7",
+  "version": "2.7.1",
   "description": "Corrige erros ortográficos em tempo real com base numa lista de palavras personalizada.",
   "permissions": [
     "storage",
