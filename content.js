@@ -1307,7 +1307,7 @@ function correctContentEditable(element) {
       // The defensive checks below handle both cases safely.
       let correctionNode = fmtEl.lastChild;
       if (correctionNode && correctionNode.nodeType !== Node.TEXT_NODE) {
-        correctionNode = correctionNode.firstChild;
+        correctionNode = correctionNode.firstChild || null;
       }
       showCorrectionFlair(element);
       if (correctionNode && correctionNode.nodeType === Node.TEXT_NODE) {
@@ -2043,12 +2043,14 @@ function applySelectionCase(transform) {
     ? selectedText.toUpperCase()
     : selectedText.toLowerCase();
 
+  const textNode = document.createTextNode(replacement);
   range.deleteContents();
-  range.insertNode(document.createTextNode(replacement));
+  range.insertNode(textNode);
 
-  // Re-select the inserted text
-  range.setStart(range.startContainer, range.startOffset);
-  range.setEnd(range.startContainer, range.startOffset + replacement.length);
+  // Re-select the inserted text using the explicit text node reference,
+  // since range.startContainer/Offset may point to the parent after insertNode.
+  range.setStart(textNode, 0);
+  range.setEnd(textNode, replacement.length);
   selection.removeAllRanges();
   selection.addRange(range);
 }
