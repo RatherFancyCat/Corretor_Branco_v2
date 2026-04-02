@@ -163,9 +163,11 @@ function renderWordList(filter) {
     tr.innerHTML = `
       <td class="word-incorrect">${escapeHtml(incorrect)}</td>
       <td class="word-correct">
-        <span>${escapeHtml(correct)}</span>
-        <button class="lookup-btn" data-word="${escapeHtml(correct)}"
-                title="${escapeHtml(I18n.t('lookup-btn-title'))}">?</button>
+        <span class="word-correct-inner">
+          <span>${escapeHtml(correct)}</span>
+          <button class="lookup-btn" data-word="${escapeHtml(correct)}"
+                  title="${escapeHtml(I18n.t('lookup-btn-title'))}">?</button>
+        </span>
       </td>
       <td class="col-format">${fmtCellHtml}</td>
       <td class="col-tag">${tagCellHtml}</td>

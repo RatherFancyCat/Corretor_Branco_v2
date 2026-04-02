@@ -1040,6 +1040,87 @@ function applyWordMapToText(text) {
 }
 
 /**
+ * Apply wordMap corrections (including bold/italic formatting) to a single
+ * text node inside a contenteditable element.
+ *
+ * When no word in the node has formatting the node's textContent is updated in
+ * place (fast path).  When at least one corrected word carries bold/italic
+ * formatting the text node is replaced with a DocumentFragment that contains
+ * plain TextNodes and <strong>/<em> elements as required.
+ */
+function recheckContentEditableNode(textNode) {
+  const text = textNode.textContent;
+  const parts = [];   // { text: string, formatted: bool, bold?: bool, italic?: bool }
+  let lastIndex = 0;
+  let hasFormatting = false;
+
+  text.replace(/\S+/g, (token, offset) => {
+    // Preserve any whitespace / text before this token
+    if (offset > lastIndex) {
+      parts.push({ text: text.substring(lastIndex, offset), formatted: false });
+    }
+
+    const strippedLeading = token.replace(LEADING_PUNCT_RE, '');
+    const coreWord = strippedLeading.replace(TRAILING_PUNCT_RE, '');
+    const correction = coreWord ? getCorrection(coreWord) : null;
+
+    if (correction) {
+      const fmt = wordFormats[coreWord.toLowerCase()] || {};
+      const leading  = token.slice(0, token.length - strippedLeading.length);
+      const trailing = strippedLeading.slice(coreWord.length);
+
+      if (fmt.bold || fmt.italic) {
+        hasFormatting = true;
+        if (leading)  parts.push({ text: leading,  formatted: false });
+        parts.push({ text: correction, formatted: true, bold: !!fmt.bold, italic: !!fmt.italic });
+        if (trailing) parts.push({ text: trailing, formatted: false });
+      } else {
+        parts.push({ text: leading + correction + trailing, formatted: false });
+      }
+    } else {
+      parts.push({ text: token, formatted: false });
+    }
+
+    lastIndex = offset + token.length;
+  });
+
+  // Preserve any trailing whitespace
+  if (lastIndex < text.length) {
+    parts.push({ text: text.substring(lastIndex), formatted: false });
+  }
+
+  if (!hasFormatting) {
+    // Fast path: plain text update
+    textNode.textContent = parts.map((p) => p.text).join('');
+    return;
+  }
+
+  // Slow path: rebuild as DOM nodes with inline formatting elements
+  const fragment = document.createDocumentFragment();
+  for (const part of parts) {
+    if (!part.formatted) {
+      if (part.text) fragment.appendChild(document.createTextNode(part.text));
+    } else {
+      let el;
+      if (part.bold && part.italic) {
+        el = document.createElement('strong');
+        const inner = document.createElement('em');
+        inner.textContent = part.text;
+        el.appendChild(inner);
+      } else if (part.bold) {
+        el = document.createElement('strong');
+        el.textContent = part.text;
+      } else {
+        el = document.createElement('em');
+        el.textContent = part.text;
+      }
+      fragment.appendChild(el);
+    }
+  }
+  textNode.parentNode.replaceChild(fragment, textNode);
+}
+
+/**
  * Scan all editable elements on the page and apply the current wordMap to
  * any text that hasn't been corrected yet.  Called after wordMap changes so
  * that words the user just added don't remain wrong in existing fields.
@@ -1059,9 +1140,9 @@ function recheckAllElements() {
         let node;
         while ((node = walker.nextNode())) {
           const newText = applyWordMapToText(node.textContent);
-          if (newText !== node.textContent) pending.push({ node, newText });
+          if (newText !== node.textContent) pending.push(node);
         }
-        for (const { node, newText } of pending) node.textContent = newText;
+        for (const node of pending) recheckContentEditableNode(node);
       }
     });
   } finally {

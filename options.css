@@ -365,7 +365,8 @@ tr:last-child td { border-bottom: none; }
 tr:hover td { background: #fafbff; }
 
 .word-incorrect { color: #C0392B; font-weight: 600; }
-.word-correct   { color: #27AE60; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.word-correct   { color: #27AE60; font-weight: 600; }
+.word-correct-inner { display: inline-flex; align-items: center; gap: 6px; }
 .col-action     { width: 80px; text-align: center; }
 
 /* ---- Lookup (?) button ---- */
