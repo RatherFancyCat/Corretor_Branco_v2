@@ -1142,7 +1142,15 @@ function recheckAllElements() {
           const newText = applyWordMapToText(node.textContent);
           if (newText !== node.textContent) pending.push(node);
         }
-        for (const node of pending) recheckContentEditableNode(node);
+        // Nodes are collected before any DOM changes to avoid invalidating the
+        // TreeWalker mid-walk.  recheckContentEditableNode replaces individual
+        // text nodes in place; guard with isConnected in case an earlier
+        // replacement happened to be an ancestor of a later pending node
+        // (text nodes have no children, so this is a theoretical edge-case,
+        // but the check is cheap and makes the loop robust).
+        for (const node of pending) {
+          if (node.isConnected) recheckContentEditableNode(node);
+        }
       }
     });
   } finally {
@@ -1289,8 +1297,12 @@ function correctContentEditable(element) {
       selection.addRange(newRange);
 
       // Pass the innermost text node to the highlight helper.
-      // When both bold and italic are set the structure is <strong><em>text</em></strong>,
-      // so we navigate to the first text-node descendant defensively.
+      // Structure: bold-only → <strong>text</strong>
+      //            italic-only → <em>text</em>
+      //            both        → <strong><em>text</em></strong>
+      // fmtEl is always the outermost element; its lastChild is either the
+      // text node (single-level) or the inner <em> element (two-level).
+      // The defensive checks below handle both cases safely.
       let correctionNode = fmtEl.lastChild;
       if (correctionNode && correctionNode.nodeType !== Node.TEXT_NODE) {
         correctionNode = correctionNode.firstChild;
